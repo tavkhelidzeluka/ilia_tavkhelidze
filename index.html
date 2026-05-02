@@ -1746,10 +1746,10 @@ function GMLBody() {
           )}
 
           <div style={styles.controls}>
-            <Slider label="m" min={2} max={Math.max(12, m + 2)} value={m}
-              onChange={(v) => setM(Math.max(2, v))} editable />
             <Slider label="n" min={0} max={Math.max(12, m * 2, n + 2)} value={n}
               onChange={(v) => setN(Math.max(0, v))} editable />
+            <Slider label="m" min={2} max={Math.max(12, m + 2)} value={m}
+              onChange={(v) => setM(Math.max(2, v))} editable />
 
             <div style={styles.toggleRow}>
               <Toggle label="auto-rotate" on={autoRotate} onChange={setAutoRotate} />
