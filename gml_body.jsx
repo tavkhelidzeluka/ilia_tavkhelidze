@@ -157,27 +157,29 @@ function localToWorld(theta, uL, vL, R, m, n) {
 // Center-curve generators C(θ) → [x, y, z] for each preset. They return a
 // raw 3D point; frame computation is done by makePathFrame() below.
 
-function pathCircle(theta, p) {
-  const R = p.R;
+function pathCircle(theta, params) {
+  const R = params.R;
   return [R * Math.cos(theta), R * Math.sin(theta), 0];
 }
 
-function pathEllipse(theta, p) {
-  return [p.a * Math.cos(theta), p.b * Math.sin(theta), 0];
+function pathEllipse(theta, params) {
+  return [params.a * Math.cos(theta), params.b * Math.sin(theta), 0];
 }
 
-function pathLemniscate(theta, p) {
+function pathLemniscate(theta, params) {
   // Bernoulli-style figure-eight in the xy-plane. Self-crosses at the origin.
-  const a = p.a;
+  // Note: passes through origin twice per period; tangent direction reverses
+  // abruptly there, but RMF handles this gracefully via continuous transport.
+  const a = params.a;
   const s = Math.sin(theta), c = Math.cos(theta);
   const denom = 1 + s * s;
   return [a * c / denom, a * s * c / denom, 0];
 }
 
-function pathTorusKnot(theta, p) {
+function pathTorusKnot(theta, params) {
   // Standard (p, q)-torus knot wrapped on a virtual torus of radii (R, r_path).
   // Period 2π for any coprime (P, Q).
-  const P = p.P, Q = p.Q, R = p.R, rp = p.rp;
+  const P = params.P, Q = params.Q, R = params.R, rp = params.rp;
   const ct = Math.cos(Q * theta), st = Math.sin(Q * theta);
   const cp = Math.cos(P * theta), sp = Math.sin(P * theta);
   return [(R + rp * ct) * cp, (R + rp * ct) * sp, rp * st];
@@ -185,8 +187,8 @@ function pathTorusKnot(theta, p) {
 
 // Numerical tangent via central difference. Used by makePathFrame for shapes
 // that don't have an analytic frame on hand.
-function pathTangent(C, theta, params, h) {
-  const eps = h || 1e-4;
+function pathTangent(C, theta, params, h = 1e-4) {
+  const eps = h;
   const a = C(theta - eps, params);
   const b = C(theta + eps, params);
   const tx = b[0] - a[0], ty = b[1] - a[1], tz = b[2] - a[2];
@@ -304,8 +306,7 @@ function makePathFrame(pathSpec, K) {
   const lookup = (theta) => {
     let t = theta % period;
     if (t < 0) t += period;
-    const i = Math.floor(t / period * K) % K;
-    return i;
+    return Math.floor(t / period * K) % K;
   };
   return {
     K, period,
@@ -317,8 +318,8 @@ function makePathFrame(pathSpec, K) {
 
 // Convenience: a circle pathFrame with the historical R = 2.3 default. Used
 // as the migration default while builders are converted in Task 3.
-function defaultCirclePathFrame(R) {
-  return makePathFrame({ Cfn: pathCircle, params: { R: R == null ? 2.3 : R }, period: 2 * Math.PI }, 1024);
+function defaultCirclePathFrame(R = 2.3) {
+  return makePathFrame({ Cfn: pathCircle, params: { R }, period: 2 * Math.PI });
 }
 
 // Polygon vertices in the rotating frame, counter-clockwise. m=2 is treated
