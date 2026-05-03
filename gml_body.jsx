@@ -1492,7 +1492,7 @@ export default function GMLBody() {
             if (!obj.geometry.attributes.color) {
               addFlatColors(obj.geometry, [0.5, 0.5, 0.7]);
             }
-            obj.userData.waveCoords = obj.geometry.userData?.waveCoords || new Float32Array(0);
+            obj.userData.waveCoords = obj.geometry.userData?.waveCoords;
             // Each piece (or the single uncut body) gets its own sound
             // material clone, indexed by orbitIdx so applyHighlight can fade
             // unselected ones via opacity.
