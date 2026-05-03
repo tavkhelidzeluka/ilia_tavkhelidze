@@ -345,6 +345,12 @@ function buildPathSpec(shape, params) {
   }
 }
 
+function gcd(a, b) {
+  a = Math.abs(a | 0); b = Math.abs(b | 0);
+  while (b) { [a, b] = [b, a % b]; }
+  return a;
+}
+
 // Polygon vertices in the rotating frame, counter-clockwise. m=2 is treated
 // as a thin rectangle so it has well-defined area for cutting.
 function getPolygonVertices(m, r) {
@@ -390,7 +396,6 @@ function clipPolygonToStrip(poly, phiCut, dLeft, dRight) {
   return p;
 }
 
-function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b]; } return a || 1; }
 // One palette per connected piece (orbit). Mathematically capped at ~2 for
 // diametric cuts, but more entries kept for robustness/future extensions.
 const PIECE_PALETTE = [
@@ -1957,9 +1962,21 @@ export default function GMLBody() {
                 <Slider label="r" min={0.1} max={2} value={knotr}
                   onChange={setKnotr} editable />
                 <Slider label="p" min={1} max={9} value={knotP}
-                  onChange={setKnotP} editable />
+                  onChange={(v) => {
+                    const np = Math.max(1, v | 0);
+                    if (gcd(np, knotQ) === 1) { setKnotP(np); return; }
+                    let nq = knotQ + 1;
+                    while (gcd(np, nq) !== 1 && nq < 20) nq++;
+                    setKnotP(np); setKnotQ(nq);
+                  }} editable />
                 <Slider label="q" min={1} max={9} value={knotQ}
-                  onChange={setKnotQ} editable />
+                  onChange={(v) => {
+                    const nq = Math.max(1, v | 0);
+                    if (gcd(knotP, nq) === 1) { setKnotQ(nq); return; }
+                    let np = knotP + 1;
+                    while (gcd(np, nq) !== 1 && np < 20) np++;
+                    setKnotP(np); setKnotQ(nq);
+                  }} editable />
               </>
             )}
             {pathShape === 'lemniscate' && (
