@@ -115,18 +115,19 @@ This is a strict correctness fix for non-circular paths; on the circle it is als
 
 ### (p, q)-torus knot
 
-- Params: `R` (default 2.0, major), `r_path` (default 0.6, knot-tube offset — distinct from cross-section circumradius `r = 0.78`), integer `p` (default 2), integer `q` (default 3).
+- Params: `R` (default 2.0, major), `r_path` (default 0.9, min 0.85, knot-tube offset — distinct from cross-section circumradius `r = 0.78`), integer `p` (default 2), integer `q` (default 3).
 - `C(θ) = ((R + r_path cos qθ) cos pθ, (R + r_path cos qθ) sin pθ, r_path sin qθ)`.
 - Period `2π`; for `gcd(p, q) = 1` this single revolution traces the full knot.
 - Non-planar — frame is computed by **rotation-minimizing parallel transport** (discrete RMF via Wang et al. 2008's double-reflection method) propagated over the `K` samples. Initial `N₀` is chosen perpendicular to the initial tangent in the xy-plane.
 - UI constrains `(p, q)` to coprime pairs: when the user moves either slider to a value that makes `gcd(p, q) > 1`, the *other* slider is auto-bumped by ±1 to the nearest coprime pair (preferring the direction the user just moved away from).
+- `r_path` is floored at 0.85 so the knot tube stays wider than the cross-section circumradius `r ≈ 0.78`; otherwise adjacent strands' tube neighborhoods overlap and the swept body self-intersects at crossings.
 
 ### lemniscate (Bernoulli figure-eight)
 
-- Params: `a` (default 2.3).
-- `C(θ) = (a cosθ / (1 + sin²θ), a sinθ cosθ / (1 + sin²θ), 0)`.
-- Planar in-plane frame as for the ellipse; `B = (0, 0, 1)`.
-- The body self-intersects at the origin. This is intended — it visualizes the figure-eight topology and is geometrically meaningful for GML bodies.
+- Params: `a` (default 2.3), `lift` (default 1.0).
+- `C(θ) = (a cosθ / (1 + sin²θ), a sinθ cosθ / (1 + sin²θ), lift · sinθ)`.
+- 3D-lifted: the planar Bernoulli curve passes through the origin twice (at θ = π/2 and θ = 3π/2); lifting `z = lift·sin(θ)` sends one lobe up and the other down so the swept body never self-intersects. Default `lift = 1.0` separates the two passes by ~2.0 in `z`, comfortably more than `2r ≈ 1.56`.
+- Frame is computed by RMF as for the torus knot (no longer purely planar).
 
 ## Frame closure
 
@@ -148,7 +149,7 @@ circleR:      number (default 2.3)
 ellipseA:     number (default 2.3)
 ellipseB:     number (default 1.5)
 knotR:        number (default 2.0)
-knotr:        number (default 0.6)
+knotr:        number (default 0.9, min 0.85)
 knotP:        integer (default 2)
 knotQ:        integer (default 3)
 lemA:         number (default 2.3)
@@ -165,7 +166,7 @@ The hard-coded `R = 2.3, r = 0.78` in `rebuild` is split: cross-section math con
 
 ## Edge cases
 
-- **Lemniscate self-intersection.** Allowed; documented as expected.
+- **Lemniscate self-intersection.** Avoided by 3D-lifting the curve (`z = lift·sin θ`, default `lift = 1.0`) so the two origin-passes separate vertically by ~2.0 — well above `2r ≈ 1.56`.
 - **Non-coprime knot `(p, q)`.** Snap to the nearest coprime pair on the most-recently-moved axis. Avoids degenerate lower-order torus links.
 - **Knot `q = 0` or `p = 0`.** Degenerates to a circle; treat the same way (snap or show no extra twist).
 - **`m = 2` (degenerate rectangle cross-section).** Path-independent; works on every shape.

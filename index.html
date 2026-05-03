@@ -212,13 +212,15 @@ function pathEllipse(theta, params) {
 }
 
 function pathLemniscate(theta, params) {
-  // Bernoulli-style figure-eight in the xy-plane. Self-crosses at the origin.
-  // Note: passes through origin twice per period; tangent direction reverses
-  // abruptly there, but RMF handles this gracefully via continuous transport.
+  // 3D-lifted Bernoulli figure-eight. The planar curve passes through the
+  // origin at θ = π/2 and θ = 3π/2; lifting z = lift·sin(θ) sends one lobe
+  // up and the other down so the swept body never self-intersects. The
+  // resulting shape is a smooth 3D figure-8 — like a Viviani curve flavor.
   const a = params.a;
   const s = Math.sin(theta), c = Math.cos(theta);
   const denom = 1 + s * s;
-  return [a * c / denom, a * s * c / denom, 0];
+  const lift = params.lift != null ? params.lift : 1.0;
+  return [a * c / denom, a * s * c / denom, lift * s];
 }
 
 function pathTorusKnot(theta, params) {
@@ -376,7 +378,7 @@ function buildPathSpec(shape, params) {
     case 'ellipse':
       return { Cfn: pathEllipse, params: { a: params.a, b: params.b }, period: 2 * Math.PI };
     case 'lemniscate':
-      return { Cfn: pathLemniscate, params: { a: params.a }, period: 2 * Math.PI };
+      return { Cfn: pathLemniscate, params: { a: params.a, lift: params.lift }, period: 2 * Math.PI };
     case 'torusKnot':
       return { Cfn: pathTorusKnot, params: { P: params.P, Q: params.Q, R: params.R, rp: params.rp }, period: 2 * Math.PI };
     case 'circle':
@@ -1048,7 +1050,10 @@ function GMLBody() {
   const [ellipseA, setEllipseA] = useState(2.3);
   const [ellipseB, setEllipseB] = useState(1.5);
   const [knotR, setKnotR] = useState(2.0);
-  const [knotr, setKnotr] = useState(0.6);
+  // Default 0.9 and min 0.85 keep the knot tube wider than the cross-section
+  // circumradius (r ≈ 0.78 in rebuild), preventing the swept body from
+  // self-intersecting at strand crossings.
+  const [knotr, setKnotr] = useState(0.9);
   const [knotP, setKnotP] = useState(2);
   const [knotQ, setKnotQ] = useState(3);
   const [lemA, setLemA] = useState(2.3);
@@ -1984,22 +1989,22 @@ function GMLBody() {
               </button>
             </div>
             {pathShape === 'circle' && (
-              <Slider label="R" min={0.5} max={5} value={circleR}
+              <Slider label="R" min={0.5} max={5} step={0.05} value={circleR}
                 onChange={setCircleR} editable />
             )}
             {pathShape === 'ellipse' && (
               <>
-                <Slider label="a" min={0.5} max={5} value={ellipseA}
+                <Slider label="a" min={0.5} max={5} step={0.05} value={ellipseA}
                   onChange={setEllipseA} editable />
-                <Slider label="b" min={0.5} max={5} value={ellipseB}
+                <Slider label="b" min={0.5} max={5} step={0.05} value={ellipseB}
                   onChange={setEllipseB} editable />
               </>
             )}
             {pathShape === 'torusKnot' && (
               <>
-                <Slider label="R" min={0.5} max={5} value={knotR}
+                <Slider label="R" min={0.5} max={5} step={0.05} value={knotR}
                   onChange={setKnotR} editable />
-                <Slider label="r" min={0.1} max={2} value={knotr}
+                <Slider label="r" min={0.85} max={2} step={0.05} value={knotr}
                   onChange={setKnotr} editable />
                 <Slider label="p" min={1} max={9} value={knotP}
                   onChange={(v) => {
@@ -2020,7 +2025,7 @@ function GMLBody() {
               </>
             )}
             {pathShape === 'lemniscate' && (
-              <Slider label="a" min={0.5} max={5} value={lemA}
+              <Slider label="a" min={0.5} max={5} step={0.05} value={lemA}
                 onChange={setLemA} editable />
             )}
             <Slider label="n" min={0} max={Math.max(12, m * 2, n + 2)} value={n}
@@ -2225,18 +2230,20 @@ function GMLBody() {
   );
 }
 
-function Slider({ label, min, max, value, onChange, suffix, editable }) {
+function Slider({ label, min, max, value, onChange, suffix, editable, step = 1 }) {
   const sliderMax = Math.max(max, value);
+  const isInt = step >= 1;
+  const parse = isInt ? (v) => parseInt(v, 10) : (v) => parseFloat(v);
   return (
     <label style={styles.sliderRow}>
       <span style={styles.sliderLabel}>{label}</span>
-      <input type="range" min={min} max={sliderMax} step={1} value={value}
-        onChange={(e) => onChange(parseInt(e.target.value, 10))}
+      <input type="range" min={min} max={sliderMax} step={step} value={value}
+        onChange={(e) => onChange(parse(e.target.value))}
         style={styles.slider} />
       {editable ? (
-        <input type="number" min={min} value={value}
+        <input type="number" min={min} step={step} value={value}
           onChange={(e) => {
-            const v = parseInt(e.target.value, 10);
+            const v = parse(e.target.value);
             if (!isNaN(v)) onChange(v);
           }}
           onClick={(e) => e.target.select()}
