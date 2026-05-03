@@ -445,7 +445,7 @@ function getCutInfo(m, n) {
 
 // --- Whole body (no cut) ---------------------------------------------------
 function buildWholeGeometry(m, n, pathFrame, r, segs) {
-  const positions = [], indices = [];
+  const positions = [], indices = [], wc = [];
   for (let i = 0; i <= segs; i++) {
     const theta = (i / segs) * 2 * Math.PI;
     for (let k = 0; k < m; k++) {
@@ -453,6 +453,7 @@ function buildWholeGeometry(m, n, pathFrame, r, segs) {
       const [bU, bV] = polygonBoundary(phi, m, r);
       const [px, py, pz] = localToWorld(pathFrame, theta, bU, bV, m, n);
       positions.push(px, py, pz);
+      wc.push(theta, Math.atan2(bV, bU));
     }
   }
   for (let i = 0; i < segs; i++) {
@@ -467,6 +468,8 @@ function buildWholeGeometry(m, n, pathFrame, r, segs) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   g.setIndex(indices);
   g.computeVertexNormals();
+  g.userData = g.userData || {};
+  g.userData.waveCoords = new Float32Array(wc);
   return g;
 }
 
@@ -475,7 +478,7 @@ function buildWholeGeometry(m, n, pathFrame, r, segs) {
 // The wedge is shifted radially in its centroid direction by `sep` for visual
 // separation. Cut faces (the two chord halves) get a contrasting vertex color.
 function buildWedgeGeometry(m, n, pathFrame, r, segs, K, phiStart, phiEnd, sep, palette, thetaMax = 2 * Math.PI, endCaps = false) {
-  const positions = [], indices = [], colors = [];
+  const positions = [], indices = [], colors = [], wc = [];
   const SURF = palette.surf;
   const CUT = palette.cut;
 
@@ -496,6 +499,7 @@ function buildWedgeGeometry(m, n, pathFrame, r, segs, K, phiStart, phiEnd, sep, 
       const [bU, bV] = polygonBoundary(phiLocal, m, r);
       const [px, py, pz] = localToWorld(pathFrame, theta, bU + dispU, bV + dispV, m, n);
       positions.push(px, py, pz);
+      wc.push(theta, Math.atan2(bV + dispV, bU + dispU));
       colors.push(...SURF);
     }
   }
@@ -519,6 +523,7 @@ function buildWedgeGeometry(m, n, pathFrame, r, segs, K, phiStart, phiEnd, sep, 
       const vL = t * bVL + dispV;
       const [px, py, pz] = localToWorld(pathFrame, theta, uL, vL, m, n);
       positions.push(px, py, pz);
+      wc.push(theta, Math.atan2(vL, uL));
       colors.push(...CUT);
     }
   }
@@ -543,6 +548,7 @@ function buildWedgeGeometry(m, n, pathFrame, r, segs, K, phiStart, phiEnd, sep, 
       const vL = t * bVR + dispV;
       const [px, py, pz] = localToWorld(pathFrame, theta, uL, vL, m, n);
       positions.push(px, py, pz);
+      wc.push(theta, Math.atan2(vL, uL));
       colors.push(...CUT);
     }
   }
@@ -564,8 +570,8 @@ function buildWedgeGeometry(m, n, pathFrame, r, segs, K, phiStart, phiEnd, sep, 
       const phiLocal = phiStart + (j / (K - 1)) * wedgeAngle;
       wedgePoly.push(polygonBoundary(phiLocal, m, r));
     }
-    addEndCap(positions, indices, colors, wedgePoly, 0, dispU, dispV, pathFrame, m, n, palette.cut, true);
-    addEndCap(positions, indices, colors, wedgePoly, thetaMax, dispU, dispV, pathFrame, m, n, palette.cut, false);
+    addEndCap(positions, indices, colors, wc, wedgePoly, 0, dispU, dispV, pathFrame, m, n, palette.cut, true);
+    addEndCap(positions, indices, colors, wc, wedgePoly, thetaMax, dispU, dispV, pathFrame, m, n, palette.cut, false);
   }
 
   const g = new THREE.BufferGeometry();
@@ -573,6 +579,8 @@ function buildWedgeGeometry(m, n, pathFrame, r, segs, K, phiStart, phiEnd, sep, 
   g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   g.setIndex(indices);
   g.computeVertexNormals();
+  g.userData = g.userData || {};
+  g.userData.waveCoords = new Float32Array(wc);
   return g;
 }
 
@@ -637,7 +645,7 @@ function buildStripGeometry(m, n, pathFrame, r, segs, phiCut, dLeft, dRight, sep
     }
   }
 
-  const positions = [], indices = [], colors = [];
+  const positions = [], indices = [], colors = [], wc = [];
   const K = ringPoints.length;
 
   for (let i = 0; i <= segs; i++) {
@@ -646,6 +654,7 @@ function buildStripGeometry(m, n, pathFrame, r, segs, phiCut, dLeft, dRight, sep
       const [bU, bV, isCut] = ringPoints[j];
       const [px, py, pz] = localToWorld(pathFrame, theta, bU + dispU, bV + dispV, m, n);
       positions.push(px, py, pz);
+      wc.push(theta, Math.atan2(bV + dispV, bU + dispU));
       const c = isCut ? palette.cut : palette.surf;
       colors.push(c[0], c[1], c[2]);
     }
@@ -659,8 +668,8 @@ function buildStripGeometry(m, n, pathFrame, r, segs, phiCut, dLeft, dRight, sep
     }
   }
   if (endCaps) {
-    addEndCap(positions, indices, colors, stripPoly, 0, dispU, dispV, pathFrame, m, n, palette.cut, true);
-    addEndCap(positions, indices, colors, stripPoly, thetaMax, dispU, dispV, pathFrame, m, n, palette.cut, false);
+    addEndCap(positions, indices, colors, wc, stripPoly, 0, dispU, dispV, pathFrame, m, n, palette.cut, true);
+    addEndCap(positions, indices, colors, wc, stripPoly, thetaMax, dispU, dispV, pathFrame, m, n, palette.cut, false);
   }
 
   const g = new THREE.BufferGeometry();
@@ -668,6 +677,8 @@ function buildStripGeometry(m, n, pathFrame, r, segs, phiCut, dLeft, dRight, sep
   g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   g.setIndex(indices);
   g.computeVertexNormals();
+  g.userData = g.userData || {};
+  g.userData.waveCoords = new Float32Array(wc);
   return g;
 }
 
@@ -904,12 +915,15 @@ function computeOrbitsCyclic(patternMap, k) {
 // Fan-triangulate a 2D polygon and add it as an end cap to the mesh at a
 // specific theta. The polygon's vertices are placed via localToWorld and
 // the resulting triangles use the supplied vertex color.
-function addEndCap(positions, indices, colors, polygon2D, theta, dispU, dispV, pathFrame, m, n, color, reversed) {
+function addEndCap(positions, indices, colors, wc, polygon2D, theta, dispU, dispV, pathFrame, m, n, color, reversed) {
   const baseIdx = positions.length / 3;
   const verts = reversed ? polygon2D.slice().reverse() : polygon2D;
   for (const [u, v] of verts) {
-    const [px, py, pz] = localToWorld(pathFrame, theta, u + dispU, v + dispV, m, n);
+    const uL = u + dispU;
+    const vL = v + dispV;
+    const [px, py, pz] = localToWorld(pathFrame, theta, uL, vL, m, n);
     positions.push(px, py, pz);
+    if (wc) wc.push(theta, Math.atan2(vL, uL));
     if (colors) colors.push(color[0], color[1], color[2]);
   }
   for (let i = 1; i < verts.length - 1; i++) {
@@ -963,7 +977,7 @@ function buildRegionGeometry(m, n, pathFrame, r, segs, regionPoly, chords, sep, 
     }
   }
 
-  const positions = [], indices = [], colors = [];
+  const positions = [], indices = [], colors = [], wc = [];
   const K = ringPoints.length;
   for (let i = 0; i <= segs; i++) {
     const theta = (i / segs) * thetaMax;
@@ -971,6 +985,7 @@ function buildRegionGeometry(m, n, pathFrame, r, segs, regionPoly, chords, sep, 
       const [bU, bV, isCut] = ringPoints[j];
       const [px, py, pz] = localToWorld(pathFrame, theta, bU + dispU, bV + dispV, m, n);
       positions.push(px, py, pz);
+      wc.push(theta, Math.atan2(bV + dispV, bU + dispU));
       const c = isCut ? palette.cut : palette.surf;
       colors.push(c[0], c[1], c[2]);
     }
@@ -984,14 +999,16 @@ function buildRegionGeometry(m, n, pathFrame, r, segs, regionPoly, chords, sep, 
     }
   }
   if (endCaps) {
-    addEndCap(positions, indices, colors, regionPoly, 0, dispU, dispV, pathFrame, m, n, palette.cut, true);
-    addEndCap(positions, indices, colors, regionPoly, thetaMax, dispU, dispV, pathFrame, m, n, palette.cut, false);
+    addEndCap(positions, indices, colors, wc, regionPoly, 0, dispU, dispV, pathFrame, m, n, palette.cut, true);
+    addEndCap(positions, indices, colors, wc, regionPoly, thetaMax, dispU, dispV, pathFrame, m, n, palette.cut, false);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   g.setIndex(indices);
   g.computeVertexNormals();
+  g.userData = g.userData || {};
+  g.userData.waveCoords = new Float32Array(wc);
   return g;
 }
 
@@ -1509,37 +1526,13 @@ function GMLBody() {
           // Discard the orbit/cut materials produced above; we'll replace them.
           s.orbitMats.forEach(mat => mat.dispose());
           s.orbitMats = [];
-          // Sound-mode inverse mapping currently assumes a circle path of
-          // radius R = 2.3 (matches defaultCirclePathFrame). Path variants
-          // will replace this in a later task.
-          const R = 2.3;
           for (const obj of s.objects) {
             // Make sure we have somewhere to write per-vertex colors. Whole-
             // body geometries don't have a color attribute by default.
             if (!obj.geometry.attributes.color) {
               addFlatColors(obj.geometry, [0.5, 0.5, 0.7]);
             }
-            // Recover (theta, phi) from each vertex's xyz. theta is just the
-            // polar angle around the torus axis. phi is the cross-section
-            // angle in the rotating frame, recovered by untwisting by α.
-            const positions = obj.geometry.attributes.position.array;
-            const N = positions.length / 3;
-            const wc = new Float32Array(N * 2);
-            for (let i = 0; i < N; i++) {
-              const x = positions[i * 3];
-              const y = positions[i * 3 + 1];
-              const z = positions[i * 3 + 2];
-              const theta = Math.atan2(y, x);
-              const aN = Math.hypot(x, y) - R;
-              const aB = z;
-              const alpha = (nV / mV) * theta;
-              const cA = Math.cos(alpha), sA = Math.sin(alpha);
-              const uL =  aN * cA + aB * sA;
-              const vL = -aN * sA + aB * cA;
-              wc[i * 2] = theta;
-              wc[i * 2 + 1] = Math.atan2(vL, uL);
-            }
-            obj.userData.waveCoords = wc;
+            obj.userData.waveCoords = obj.geometry.userData?.waveCoords || new Float32Array(0);
             // Each piece (or the single uncut body) gets its own sound
             // material clone, indexed by orbitIdx so applyHighlight can fade
             // unselected ones via opacity.
