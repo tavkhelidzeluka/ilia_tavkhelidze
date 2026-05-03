@@ -40,7 +40,7 @@ A pure helper `makePathFrame(pathSpec, K = 1024)` returns a sampled frame table:
 }
 ```
 
-`pathFrame.eval(theta)` linearly interpolates the table by index. The table is rebuilt only when `pathShape` or its parameters change.
+`pathFrame.eval(theta)` looks up the table by index `i = floor((theta mod period) / period * K)` (nearest-sample, no interpolation — `K = 1024` is dense enough that this is below per-pixel error for typical builder θ-step counts of ~200). The table is rebuilt only when `pathShape` or its parameters change.
 
 ### Embedding change
 
@@ -87,9 +87,17 @@ The `α = (n/m)·θ` rotation that controls cross-section twist is unchanged. It
 
 - `getPolygonVertices`, `polygonBoundary`, `clipPolygonByHalfPlane`, `clipPolygonToStrip`, `polygonArea`, `findAllRegions` — all in the local 2D frame.
 - `getCutInfo`, `computeOrbitsCyclic`, `getParallelOrbits`, `offCenterChords`, `pointToPointChords` — depend only on `m`, `n`, `r`, and chord geometry; path-independent.
-- `polygonWaveform`, `sampleWaveformPhase`, the audio path, the `(p·θ + q·φ − phase)` color sweep — path-independent.
+- `polygonWaveform`, `sampleWaveformPhase`, the audio path, the `(p·θ + q·φ − phase)` color sweep formula — path-independent.
 - `CrossSection2D` — purely 2D, unaffected.
 - Picking (`THREE.Raycaster`, `userData.orbitIdx`), highlight/solo (`applyHighlight`, `orbitMats`) — operate on rendered meshes regardless of the path.
+
+### Sound-mode `(θ, φ)` recovery — a required change
+
+The current sound-mode setup (`index.html` ~lines 1338–1356) inverts `localToWorld` to recover `(θ, φ)` from each vertex's world coordinates using `θ = atan2(y, x)` and `aN = hypot(x, y) - R`. That inversion is only valid for a circle in the xy-plane and breaks on every other preset.
+
+Fix: each builder, which already knows `θ` and the local 2D vertex coordinates `(uL, vL)` at the moment it emits a vertex, additionally writes `(θ, φ = atan2(vL, uL))` into a `Float32Array` vertex attribute (call it `waveCoords`, two floats per vertex). The geometry-build path stores it on `obj.userData.waveCoords` directly — eliminating the `Math.atan2`/`Math.hypot`/`R` recovery loop entirely. The downstream rAF tick that reads `waveCoords` for color sampling is unchanged.
+
+This is a strict correctness fix for non-circular paths; on the circle it is also faster (no per-vertex trig at sound-mode initialization) and bit-equivalent.
 
 ## Preset shapes
 
@@ -111,7 +119,7 @@ The `α = (n/m)·θ` rotation that controls cross-section twist is unchanged. It
 - `C(θ) = ((R + r_path cos qθ) cos pθ, (R + r_path cos qθ) sin pθ, r_path sin qθ)`.
 - Period `2π`; for `gcd(p, q) = 1` this single revolution traces the full knot.
 - Non-planar — frame is computed by **rotation-minimizing parallel transport** (discrete RMF via Wang et al. 2008's double-reflection method) propagated over the `K` samples. Initial `N₀` is chosen perpendicular to the initial tangent in the xy-plane.
-- UI constrains `(p, q)` to coprime pairs by snapping the most recently moved slider away when the pair becomes non-coprime.
+- UI constrains `(p, q)` to coprime pairs: when the user moves either slider to a value that makes `gcd(p, q) > 1`, the *other* slider is auto-bumped by ±1 to the nearest coprime pair (preferring the direction the user just moved away from).
 
 ### lemniscate (Bernoulli figure-eight)
 
@@ -153,7 +161,7 @@ UI placement (mirroring the existing `cutMode` picker pattern):
 
 `makePathFrame` is memoized on `(pathShape, ...pathParams)` and the resulting `pathFrame` is passed into `stateRef.current.rebuild(...)`. Switching shapes triggers exactly one rebuild.
 
-The hard-coded `R = 2.3, r = 0.78` in `rebuild` is split: `R` becomes the path-derived radius (only used for camera/zoom heuristics if any; cross-section math uses `r` only and does not change).
+The hard-coded `R = 2.3, r = 0.78` in `rebuild` is split: cross-section math continues to use `r = 0.78` unchanged. `R` is no longer needed in `rebuild` itself once builders take a `pathFrame`; it is moved into `circleR` state and is read only inside the circle preset's `pathSpec`. No camera/zoom code currently reads `R`; this is verified by grep before the change lands.
 
 ## Edge cases
 
