@@ -153,6 +153,174 @@ function localToWorld(theta, uL, vL, R, m, n) {
   return [cx + aN * Nx, cy + aN * Ny, aB];
 }
 
+// --- Path-shape primitives ------------------------------------------------
+// Center-curve generators C(θ) → [x, y, z] for each preset. They return a
+// raw 3D point; frame computation is done by makePathFrame() below.
+
+function pathCircle(theta, p) {
+  const R = p.R;
+  return [R * Math.cos(theta), R * Math.sin(theta), 0];
+}
+
+function pathEllipse(theta, p) {
+  return [p.a * Math.cos(theta), p.b * Math.sin(theta), 0];
+}
+
+function pathLemniscate(theta, p) {
+  // Bernoulli-style figure-eight in the xy-plane. Self-crosses at the origin.
+  const a = p.a;
+  const s = Math.sin(theta), c = Math.cos(theta);
+  const denom = 1 + s * s;
+  return [a * c / denom, a * s * c / denom, 0];
+}
+
+function pathTorusKnot(theta, p) {
+  // Standard (p, q)-torus knot wrapped on a virtual torus of radii (R, r_path).
+  // Period 2π for any coprime (P, Q).
+  const P = p.P, Q = p.Q, R = p.R, rp = p.rp;
+  const ct = Math.cos(Q * theta), st = Math.sin(Q * theta);
+  const cp = Math.cos(P * theta), sp = Math.sin(P * theta);
+  return [(R + rp * ct) * cp, (R + rp * ct) * sp, rp * st];
+}
+
+// Numerical tangent via central difference. Used by makePathFrame for shapes
+// that don't have an analytic frame on hand.
+function pathTangent(C, theta, params, h) {
+  const eps = h || 1e-4;
+  const a = C(theta - eps, params);
+  const b = C(theta + eps, params);
+  const tx = b[0] - a[0], ty = b[1] - a[1], tz = b[2] - a[2];
+  const L = Math.hypot(tx, ty, tz) || 1;
+  return [tx / L, ty / L, tz / L];
+}
+
+// Rotation-minimizing-frame propagator (Wang et al. 2008, "double reflection").
+// Given the previous frame (T₀, N₀, B₀) at C₀ and the next tangent T₁ at C₁,
+// returns the new (N₁, B₁) that minimizes torsional rotation. Avoids the
+// instabilities of Frenet at inflection points.
+function rmfStep(C0, T0, N0, C1, T1) {
+  const v1 = [C1[0] - C0[0], C1[1] - C0[1], C1[2] - C0[2]];
+  const c1 = v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2];
+  if (c1 === 0) return N0.slice();
+  const dotN0 = (v1[0] * N0[0] + v1[1] * N0[1] + v1[2] * N0[2]) * 2 / c1;
+  const Nl = [N0[0] - dotN0 * v1[0], N0[1] - dotN0 * v1[1], N0[2] - dotN0 * v1[2]];
+  const dotT0 = (v1[0] * T0[0] + v1[1] * T0[1] + v1[2] * T0[2]) * 2 / c1;
+  const Tl = [T0[0] - dotT0 * v1[0], T0[1] - dotT0 * v1[1], T0[2] - dotT0 * v1[2]];
+  const v2 = [T1[0] - Tl[0], T1[1] - Tl[1], T1[2] - Tl[2]];
+  const c2 = v2[0] * v2[0] + v2[1] * v2[1] + v2[2] * v2[2];
+  if (c2 === 0) return Nl;
+  const dotNl = (v2[0] * Nl[0] + v2[1] * Nl[1] + v2[2] * Nl[2]) * 2 / c2;
+  return [Nl[0] - dotNl * v2[0], Nl[1] - dotNl * v2[1], Nl[2] - dotNl * v2[2]];
+}
+
+// Choose an initial N₀ orthogonal to T₀, biased toward the xy-plane so planar
+// curves get the same outward-radial frame the original circle code used.
+function initialNormal(T) {
+  const flat = [-T[1], T[0], 0];
+  const fl = Math.hypot(flat[0], flat[1]);
+  if (fl > 1e-6) return [flat[0] / fl, flat[1] / fl, 0];
+  // Tangent is vertical — fall back to x-axis.
+  return [1, 0, 0];
+}
+
+// Build a sampled frame table for one full period of the path. K samples,
+// nearest-sample lookup. The returned object exposes evaluator methods used
+// by localToWorld.
+function makePathFrame(pathSpec, K) {
+  K = K || 1024;
+  const period = pathSpec.period || (2 * Math.PI);
+  const Cfn = pathSpec.Cfn;
+  const params = pathSpec.params;
+  const Cs = new Float32Array(K * 3);
+  const Ts = new Float32Array(K * 3);
+  for (let i = 0; i < K; i++) {
+    const t = (i / K) * period;
+    const c = Cfn(t, params);
+    const T = pathTangent(Cfn, t, params);
+    Cs[i*3] = c[0]; Cs[i*3+1] = c[1]; Cs[i*3+2] = c[2];
+    Ts[i*3] = T[0]; Ts[i*3+1] = T[1]; Ts[i*3+2] = T[2];
+  }
+  // Propagate N around the loop with RMF, starting from initialNormal at i=0.
+  const Ns = new Float32Array(K * 3);
+  let N = initialNormal([Ts[0], Ts[1], Ts[2]]);
+  Ns[0] = N[0]; Ns[1] = N[1]; Ns[2] = N[2];
+  for (let i = 1; i < K; i++) {
+    const C0 = [Cs[(i-1)*3], Cs[(i-1)*3+1], Cs[(i-1)*3+2]];
+    const T0 = [Ts[(i-1)*3], Ts[(i-1)*3+1], Ts[(i-1)*3+2]];
+    const C1 = [Cs[i*3], Cs[i*3+1], Cs[i*3+2]];
+    const T1 = [Ts[i*3], Ts[i*3+1], Ts[i*3+2]];
+    N = rmfStep(C0, T0, [Ns[(i-1)*3], Ns[(i-1)*3+1], Ns[(i-1)*3+2]], C1, T1);
+    // Re-orthonormalize against T1 to fight floating-point drift.
+    const dot = N[0]*T1[0] + N[1]*T1[1] + N[2]*T1[2];
+    N = [N[0] - dot * T1[0], N[1] - dot * T1[1], N[2] - dot * T1[2]];
+    const Ln = Math.hypot(N[0], N[1], N[2]) || 1;
+    N = [N[0]/Ln, N[1]/Ln, N[2]/Ln];
+    Ns[i*3] = N[0]; Ns[i*3+1] = N[1]; Ns[i*3+2] = N[2];
+  }
+  // Holonomy correction so the frame closes at θ = period.
+  // Measure the residual rotation between N at i=0 and what RMF would give
+  // at i=K (one more step beyond the table), in the plane perpendicular to T₀.
+  const C_last  = [Cs[(K-1)*3], Cs[(K-1)*3+1], Cs[(K-1)*3+2]];
+  const T_last  = [Ts[(K-1)*3], Ts[(K-1)*3+1], Ts[(K-1)*3+2]];
+  const N_last  = [Ns[(K-1)*3], Ns[(K-1)*3+1], Ns[(K-1)*3+2]];
+  const C_wrap  = [Cs[0], Cs[1], Cs[2]];
+  const T_wrap  = [Ts[0], Ts[1], Ts[2]];
+  const N_wrap_predicted = rmfStep(C_last, T_last, N_last, C_wrap, T_wrap);
+  // Compute signed angle from N_wrap_predicted to Ns[0] in the (N, B) plane.
+  const N0 = [Ns[0], Ns[1], Ns[2]];
+  const B0 = [
+    T_wrap[1]*N0[2] - T_wrap[2]*N0[1],
+    T_wrap[2]*N0[0] - T_wrap[0]*N0[2],
+    T_wrap[0]*N0[1] - T_wrap[1]*N0[0],
+  ];
+  const cosD = N_wrap_predicted[0]*N0[0] + N_wrap_predicted[1]*N0[1] + N_wrap_predicted[2]*N0[2];
+  const sinD = N_wrap_predicted[0]*B0[0] + N_wrap_predicted[1]*B0[1] + N_wrap_predicted[2]*B0[2];
+  const delta = Math.atan2(sinD, cosD);  // residual we want to remove
+  // Back-rotate each (N, B) by -delta * (i / K) so the table closes.
+  const Bs = new Float32Array(K * 3);
+  for (let i = 0; i < K; i++) {
+    const ang = -delta * (i / K);
+    const cA = Math.cos(ang), sA = Math.sin(ang);
+    const Ni = [Ns[i*3], Ns[i*3+1], Ns[i*3+2]];
+    const Ti = [Ts[i*3], Ts[i*3+1], Ts[i*3+2]];
+    const Bi = [
+      Ti[1]*Ni[2] - Ti[2]*Ni[1],
+      Ti[2]*Ni[0] - Ti[0]*Ni[2],
+      Ti[0]*Ni[1] - Ti[1]*Ni[0],
+    ];
+    const Nrot = [
+      Ni[0]*cA + Bi[0]*sA,
+      Ni[1]*cA + Bi[1]*sA,
+      Ni[2]*cA + Bi[2]*sA,
+    ];
+    const Brot = [
+      -Ni[0]*sA + Bi[0]*cA,
+      -Ni[1]*sA + Bi[1]*cA,
+      -Ni[2]*sA + Bi[2]*cA,
+    ];
+    Ns[i*3]   = Nrot[0]; Ns[i*3+1] = Nrot[1]; Ns[i*3+2] = Nrot[2];
+    Bs[i*3]   = Brot[0]; Bs[i*3+1] = Brot[1]; Bs[i*3+2] = Brot[2];
+  }
+  const lookup = (theta) => {
+    let t = theta % period;
+    if (t < 0) t += period;
+    const i = Math.floor(t / period * K) % K;
+    return i;
+  };
+  return {
+    K, period,
+    C: (theta) => { const i = lookup(theta); return [Cs[i*3], Cs[i*3+1], Cs[i*3+2]]; },
+    N: (theta) => { const i = lookup(theta); return [Ns[i*3], Ns[i*3+1], Ns[i*3+2]]; },
+    B: (theta) => { const i = lookup(theta); return [Bs[i*3], Bs[i*3+1], Bs[i*3+2]]; },
+  };
+}
+
+// Convenience: a circle pathFrame with the historical R = 2.3 default. Used
+// as the migration default while builders are converted in Task 3.
+function defaultCirclePathFrame(R) {
+  return makePathFrame({ Cfn: pathCircle, params: { R: R == null ? 2.3 : R }, period: 2 * Math.PI }, 1024);
+}
+
 // Polygon vertices in the rotating frame, counter-clockwise. m=2 is treated
 // as a thin rectangle so it has well-defined area for cutting.
 function getPolygonVertices(m, r) {
