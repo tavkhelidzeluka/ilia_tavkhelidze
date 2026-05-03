@@ -1752,7 +1752,7 @@ export default function GMLBody() {
         <h1 style={styles.title}>
           Generalized Möbius–Listing Body
           <span style={styles.titleSub}>
-            &nbsp;GML<sup style={{fontSize:'0.55em'}}>m</sup><sub style={{fontSize:'0.55em', marginLeft:-4}}>n</sub>
+            &nbsp;GML<sup style={{fontSize:'0.55em'}}>n</sup><sub style={{fontSize:'0.55em', marginLeft:-4}}>m</sub>
           </span>
         </h1>
       </header>
@@ -2042,7 +2042,7 @@ export default function GMLBody() {
             <div style={styles.fullScreenHeader}>
               <div>
                 <div style={styles.fullScreenEyebrow}>
-                  cross-section · GML<sup>{m}</sup><sub style={{marginLeft:-4}}>{n}</sub>
+                  cross-section · GML<sup>{n}</sup><sub style={{marginLeft:-4}}>{m}</sub>
                 </div>
                 <div style={styles.fullScreenSubtitle}>
                   {cutMode === 'p2p'
