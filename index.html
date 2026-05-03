@@ -371,6 +371,20 @@ function defaultCirclePathFrame(R = 2.3) {
   return makePathFrame({ Cfn: pathCircle, params: { R }, period: 2 * Math.PI });
 }
 
+function buildPathSpec(shape, params) {
+  switch (shape) {
+    case 'ellipse':
+      return { Cfn: pathEllipse, params: { a: params.a, b: params.b }, period: 2 * Math.PI };
+    case 'lemniscate':
+      return { Cfn: pathLemniscate, params: { a: params.a }, period: 2 * Math.PI };
+    case 'torusKnot':
+      return { Cfn: pathTorusKnot, params: { P: params.P, Q: params.Q, R: params.R, rp: params.rp }, period: 2 * Math.PI };
+    case 'circle':
+    default:
+      return { Cfn: pathCircle, params: { R: params.R }, period: 2 * Math.PI };
+  }
+}
+
 // Polygon vertices in the rotating frame, counter-clockwise. m=2 is treated
 // as a thin rectangle so it has well-defined area for cutting.
 function getPolygonVertices(m, r) {
@@ -1024,6 +1038,15 @@ function GMLBody() {
   const [gradient, setGradient] = useState(false);
   const [cut, setCut] = useState(false);
   const [cutMode, setCutMode] = useState('center');
+  const [pathShape, setPathShape] = useState('circle');
+  const [circleR, setCircleR] = useState(2.3);
+  const [ellipseA, setEllipseA] = useState(2.3);
+  const [ellipseB, setEllipseB] = useState(1.5);
+  const [knotR, setKnotR] = useState(2.0);
+  const [knotr, setKnotr] = useState(0.6);
+  const [knotP, setKnotP] = useState(2);
+  const [knotQ, setKnotQ] = useState(3);
+  const [lemA, setLemA] = useState(2.3);
   const [sliceCount, setSliceCount] = useState(2);
   const [offsetD, setOffsetD] = useState(40);
   const [phi1, setPhi1] = useState(30);   // p2p mode endpoint 1 (degrees)
@@ -1575,6 +1598,16 @@ function GMLBody() {
   }, []);
 
   useEffect(() => {
+    if (!stateRef.current) return;
+    const params = pathShape === 'ellipse' ? { a: ellipseA, b: ellipseB }
+      : pathShape === 'lemniscate' ? { a: lemA }
+      : pathShape === 'torusKnot' ? { R: knotR, rp: knotr, P: knotP, Q: knotQ }
+      : { R: circleR };
+    const spec = buildPathSpec(pathShape, params);
+    stateRef.current.pathFrame = makePathFrame(spec, 1024);
+  }, [pathShape, circleR, ellipseA, ellipseB, knotR, knotr, knotP, knotQ, lemA]);
+
+  useEffect(() => {
     const seamFrac = seamOpen / 100;
     const thetaMax = 2 * Math.PI * (1 - 0.3 * seamFrac);
     const endCaps = cut && seamOpen > 0;
@@ -1592,7 +1625,7 @@ function GMLBody() {
       gradient && !soundMode,
       soundMode,
     );
-  }, [tab, m, n, showRidges, cut, cutMode, sliceCount, offsetD, cutPhi, separation, seamOpen, phi1, phi2, bladeShape, bladeAmount, bladeProfile, gradient]);
+  }, [tab, m, n, showRidges, cut, cutMode, sliceCount, offsetD, cutPhi, separation, seamOpen, phi1, phi2, bladeShape, bladeAmount, bladeProfile, gradient, pathShape, circleR, ellipseA, ellipseB, knotR, knotr, knotP, knotQ, lemA]);
 
   // Push the live sound parameters into stateRef so the tick loop sees them
   // without rebuilding the geometry every time the user wiggles a slider.
