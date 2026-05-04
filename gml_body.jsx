@@ -995,8 +995,10 @@ function buildRegionGeometry(m, n, pathFrame, r, segs, regionPoly, chords, sep, 
 
 // --- Component -------------------------------------------------------------
 
+const PALETTE_W = 220;
+const PALETTE_H_MIN = 60;
+
 function MainPalette({ pos, setPos, collapsed, setCollapsed, children }) {
-  const headerRef = useRef(null);
   const dragRef = useRef(null);
   const onPointerDown = (e) => {
     if (e.target.closest('[data-no-drag]')) return;
@@ -1010,15 +1012,14 @@ function MainPalette({ pos, setPos, collapsed, setCollapsed, children }) {
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
     setPos({
-      x: Math.min(Math.max(0, dragRef.current.start.x + dx), window.innerWidth - 200),
-      y: Math.min(Math.max(0, dragRef.current.start.y + dy), window.innerHeight - 60),
+      x: Math.min(Math.max(0, dragRef.current.start.x + dx), window.innerWidth - PALETTE_W),
+      y: Math.min(Math.max(0, dragRef.current.start.y + dy), window.innerHeight - PALETTE_H_MIN),
     });
   };
   const onPointerUp = () => { dragRef.current = null; };
   return (
     <div style={{...styles.palette, left: pos.x, top: pos.y}}>
       <div
-        ref={headerRef}
         style={{...styles.paletteHeader, cursor: 'grab'}}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -1057,10 +1058,10 @@ function Popover({ open, anchor, onClose, title, children }) {
       onClose();
     };
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('mousedown', onDown);
+    document.addEventListener('pointerdown', onDown);
     document.addEventListener('keydown', onKey);
     return () => {
-      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('pointerdown', onDown);
       document.removeEventListener('keydown', onKey);
     };
   }, [open, onClose, anchor]);
@@ -1176,8 +1177,27 @@ export default function GMLBody() {
   const [separation, setSeparation] = useState(40);
   const [seamOpen, setSeamOpen] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(true);
-  const [mainPos, setMainPos] = useState({ x: 18, y: 50 });
-  const [mainCollapsed, setMainCollapsed] = useState(false);
+  const readPaletteStorage = () => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('gml.mainPalette') : null;
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch { return null; }
+  };
+  const savedPalette = typeof window !== 'undefined' ? readPaletteStorage() : null;
+  const initialMainPos = (() => {
+    if (savedPalette && typeof savedPalette.x === 'number' && typeof savedPalette.y === 'number') {
+      return {
+        x: Math.min(Math.max(0, savedPalette.x), Math.max(0, window.innerWidth - PALETTE_W)),
+        y: Math.min(Math.max(0, savedPalette.y), Math.max(0, window.innerHeight - PALETTE_H_MIN)),
+      };
+    }
+    return { x: 18, y: 50 };
+  })();
+  const initialMainCollapsed = !!(savedPalette && savedPalette.collapsed);
+
+  const [mainPos, setMainPos] = useState(initialMainPos);
+  const [mainCollapsed, setMainCollapsed] = useState(initialMainCollapsed);
   const [openPopover, setOpenPopover] = useState(null); // null | 'cut' | 'sound'
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 720);
 
@@ -1185,21 +1205,6 @@ export default function GMLBody() {
     const onResize = () => setIsMobile(window.innerWidth < 720);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('gml.mainPalette');
-      if (raw) {
-        const v = JSON.parse(raw);
-        if (v && typeof v.x === 'number' && typeof v.y === 'number') {
-          const x = Math.min(Math.max(0, v.x), Math.max(0, window.innerWidth - 200));
-          const y = Math.min(Math.max(0, v.y), Math.max(0, window.innerHeight - 60));
-          setMainPos({ x, y });
-        }
-        if (typeof v.collapsed === 'boolean') setMainCollapsed(v.collapsed);
-      }
-    } catch {}
   }, []);
 
   useEffect(() => {
