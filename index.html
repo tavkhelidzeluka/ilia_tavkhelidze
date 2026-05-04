@@ -1089,8 +1089,20 @@ function Pill({ icon, label, active, onClick }) {
 
 function Popover({ open, anchor, onClose, title, children }) {
   const ref = useRef(null);
+  const [pos, setPos] = useState({ right: 18, bottom: 60 });
   useEffect(() => {
     if (!open) return;
+    const compute = () => {
+      if (anchor && anchor.current) {
+        const rect = anchor.current.getBoundingClientRect();
+        setPos({
+          right: Math.max(8, window.innerWidth - rect.right),
+          bottom: window.innerHeight - rect.top + 8,
+        });
+      }
+    };
+    compute();
+    window.addEventListener('resize', compute);
     const onDown = (e) => {
       if (!ref.current) return;
       if (ref.current.contains(e.target)) return;
@@ -1101,13 +1113,14 @@ function Popover({ open, anchor, onClose, title, children }) {
     document.addEventListener('pointerdown', onDown);
     document.addEventListener('keydown', onKey);
     return () => {
+      window.removeEventListener('resize', compute);
       document.removeEventListener('pointerdown', onDown);
       document.removeEventListener('keydown', onKey);
     };
   }, [open, onClose, anchor]);
   if (!open) return null;
   return (
-    <div ref={ref} style={{...styles.popover, right: 18, bottom: 60}}>
+    <div ref={ref} style={{...styles.popover, right: pos.right, bottom: pos.bottom}}>
       <div style={styles.paletteHeader}>
         <span>{title}</span>
         <button style={styles.paletteHeaderClose} onClick={onClose} aria-label="close">×</button>
