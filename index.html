@@ -1187,6 +1187,7 @@ function GMLBody() {
   const mountRef = useRef(null);
   const stateRef = useRef({});
   const soundPillRef = useRef(null);
+  const cutPillRef = useRef(null);
   const [m, setM] = useState(3);
   const [n, setN] = useState(1);
   const [autoRotate, setAutoRotate] = useState(true);
@@ -2083,12 +2084,72 @@ function GMLBody() {
             </div>
           </MainPalette>
           <div style={styles.pillRow}>
-            <Pill icon="✂" label="Cut" active={cut} onClick={() => setCut(!cut)} />
+            <span ref={cutPillRef}>
+              <Pill icon="✂" label="Cut" active={openPopover === 'cut'}
+                    onClick={() => setOpenPopover(openPopover === 'cut' ? null : 'cut')} />
+            </span>
             <span ref={soundPillRef}>
               <Pill icon="♪" label="Sound" active={openPopover === 'sound'}
                     onClick={() => setOpenPopover(openPopover === 'sound' ? null : 'sound')} />
             </span>
           </div>
+          <Popover open={openPopover === 'cut'} anchor={cutPillRef} onClose={() => setOpenPopover(null)} title="✂ Cut">
+            <div style={styles.toggleRow}>
+              <Toggle label={cut ? 'cutting' : 'whole'} on={cut} onChange={setCut} accent />
+            </div>
+            {cut && (
+              <>
+                <div style={{...styles.modeRow, marginTop: 8}}>
+                  <button onClick={() => setCutMode('center')} style={{...styles.modeBtn, ...(cutMode === 'center' ? styles.modeBtnOn : {})}}>center</button>
+                  <button onClick={() => setCutMode('parallel')} style={{...styles.modeBtn, ...(cutMode === 'parallel' ? styles.modeBtnOn : {})}}>parallel</button>
+                  <button onClick={() => setCutMode('offcenter')} style={{...styles.modeBtn, ...(cutMode === 'offcenter' ? styles.modeBtnOn : {})}}>off-center</button>
+                  <button onClick={() => setCutMode('p2p')} style={{...styles.modeBtn, ...(cutMode === 'p2p' ? styles.modeBtnOn : {})}}>p→p</button>
+                </div>
+                {cutMode === 'parallel' && (
+                  <Slider label="N" min={1} max={5} value={sliceCount} onChange={setSliceCount} suffix={`${sliceCount}`} />
+                )}
+                {cutMode === 'offcenter' && (
+                  <Slider label="d" min={1} max={95} value={offsetD} onChange={setOffsetD} suffix={`${offsetD}%`} />
+                )}
+                {cutMode === 'p2p' && (
+                  <>
+                    <Slider label="P₁" min={0} max={359} value={phi1} onChange={setPhi1} suffix={`${phi1}°`} />
+                    <Slider label="P₂" min={0} max={359} value={phi2} onChange={setPhi2} suffix={`${phi2}°`} />
+                  </>
+                )}
+                {cutMode !== 'p2p' && (
+                  <Slider label="θ°" min={0}
+                    max={cutMode === 'center' ? Math.round(180 / cutInfo.K_cuts) : 180}
+                    value={cutMode === 'center' ? Math.min(cutPhi, Math.round(180 / cutInfo.K_cuts)) : cutPhi}
+                    onChange={setCutPhi}
+                    suffix={`${cutMode === 'center' ? Math.min(cutPhi, Math.round(180 / cutInfo.K_cuts)) : cutPhi}°`} />
+                )}
+                <Slider label="gap" min={0} max={100} value={separation} onChange={setSeparation} suffix={`${separation}%`} />
+                <Slider label="open" min={0} max={100} value={seamOpen} onChange={setSeamOpen} suffix={`${seamOpen}%`} />
+                {cutMode !== 'center' && (
+                  <>
+                    <div style={styles.bladeRow}>
+                      <span style={styles.bladeLabel}>blade</span>
+                      <button onClick={() => setBladeShape('straight')} style={{...styles.bladeBtn, ...(bladeShape === 'straight' ? styles.bladeBtnOn : {})}}>straight</button>
+                      <button onClick={() => setBladeShape('curved')} style={{...styles.bladeBtn, ...(bladeShape === 'curved' ? styles.bladeBtnOn : {})}}>curved</button>
+                      <button onClick={() => setBladeShape('zigzag')} style={{...styles.bladeBtn, ...(bladeShape === 'zigzag' ? styles.bladeBtnOn : {})}}>zig-zag</button>
+                      <button onClick={() => setBladeShape('custom')} style={{...styles.bladeBtn, ...(bladeShape === 'custom' ? styles.bladeBtnOn : {})}}>draw</button>
+                    </div>
+                    {bladeShape !== 'straight' && (
+                      <Slider label="amp" min={0} max={100} value={bladeAmount} onChange={setBladeAmount} suffix={`${bladeAmount}%`} />
+                    )}
+                    {bladeShape === 'custom' && (
+                      <BladeProfileEditor profile={bladeProfile} setProfile={setBladeProfile} N={PROFILE_N} />
+                    )}
+                  </>
+                )}
+                <div style={styles.toggleRow}>
+                  <Toggle label="2D view" on={show2D} onChange={setShow2D} />
+                  <Toggle label="solo piece" on={hideOthers} onChange={setHideOthers} />
+                </div>
+              </>
+            )}
+          </Popover>
           <Popover open={openPopover === 'sound'} anchor={soundPillRef} onClose={() => setOpenPopover(null)} title="♪ Sound">
             <WaveformDisplay m={m} />
             <Slider label="p" min={0} max={8} value={pMode} onChange={setPMode} suffix={`${pMode}`} />
