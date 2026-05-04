@@ -1238,8 +1238,7 @@ export default function GMLBody() {
   highlightRef.current = highlightedPiece;
   hideOthersRef.current = hideOthers;
 
-  // --- Sound tab state ----------------------------------------------------
-  const [tab, setTab] = useState('geometry');  // 'geometry' | 'sound'
+  // --- Sound state --------------------------------------------------------
   const [pMode, setPMode] = useState(2);   // wave count around the torus
   const [qMode, setQMode] = useState(1);   // wave count around the cross-section
   const [waveFreq, setWaveFreq] = useState(220);  // audible Hz
@@ -2185,9 +2184,7 @@ export default function GMLBody() {
       )}
 
       <footer style={styles.footer}>
-        {tab === 'geometry'
-          ? <span>hover to highlight · click a piece to isolate · scroll/pinch to zoom</span>
-          : <span>polygon-derived n-gon waves · timbre changes with m · cuts overlay</span>}
+        <span>hover to highlight · click a piece to isolate · scroll/pinch to zoom</span>
       </footer>
 
       {fullScreen2D && cut && (
@@ -2957,25 +2954,6 @@ const styles = {
     overflowY: 'auto',
     maxHeight: 'calc(70vh - 38px)',
   },
-  readout: {
-    display: 'flex', justifyContent: 'space-between',
-    padding: '14px 4px 4px',
-    fontFamily: '"JetBrains Mono", monospace',
-    borderBottom: '1px solid rgba(246,239,225,0.08)', marginBottom: 12,
-  },
-  param: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 },
-  paramLabel: { fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(246,239,225,0.5)' },
-  paramVal: { fontSize: 16, fontWeight: 500, color: '#f6efe1' },
-  paramHint: { fontSize: 9, color: 'rgba(246,239,225,0.35)' },
-  note: {
-    fontFamily: '"JetBrains Mono", monospace',
-    fontSize: 11, color: '#e9a36b',
-    padding: '6px 10px',
-    background: 'rgba(199,134,89,0.06)',
-    border: '1px solid rgba(199,134,89,0.18)',
-    borderRadius: 3, marginBottom: 14, textAlign: 'center',
-  },
-  controls: { display: 'flex', flexDirection: 'column', gap: 12 },
   sliderRow: { display: 'grid', gridTemplateColumns: '32px 1fr 68px', alignItems: 'center', gap: 14 },
   sliderLabel: { fontFamily: '"Cormorant Garamond", serif', fontStyle: 'italic', fontSize: 18, color: '#e9a36b' },
   slider: { width: '100%' },
@@ -3002,13 +2980,6 @@ const styles = {
     border: '1px solid rgba(246,239,225,0.18)',
     background: 'transparent', color: 'rgba(246,239,225,0.55)',
     borderRadius: 2, transition: 'all 0.2s ease',
-  },
-  cutPanel: {
-    display: 'flex', flexDirection: 'column', gap: 10,
-    padding: '12px 12px',
-    background: 'rgba(233,163,107,0.05)',
-    border: '1px solid rgba(233,163,107,0.18)',
-    borderRadius: 3, marginTop: 4,
   },
   palette: {
     position: 'fixed',
@@ -3187,33 +3158,6 @@ const styles = {
     background: 'rgba(233,163,107,0.18)',
     borderColor: '#e9a36b',
     color: '#f6efe1',
-  },
-  tabRow: {
-    display: 'flex', gap: 6, marginBottom: 12,
-  },
-  tabBtn: {
-    flex: 1,
-    fontFamily: '"JetBrains Mono", monospace',
-    fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase',
-    padding: '10px 0',
-    background: 'transparent',
-    border: '1px solid rgba(246,239,225,0.16)',
-    color: 'rgba(246,239,225,0.55)',
-    borderRadius: 3,
-    cursor: 'pointer',
-    transition: 'all 0.18s ease',
-  },
-  tabBtnOn: {
-    background: 'linear-gradient(180deg, rgba(233,163,107,0.18), rgba(199,134,89,0.10))',
-    borderColor: '#e9a36b',
-    color: '#f6efe1',
-  },
-  soundHint: {
-    fontFamily: '"JetBrains Mono", monospace',
-    fontSize: 9, letterSpacing: '0.04em',
-    color: 'rgba(246,239,225,0.42)',
-    textAlign: 'center', marginTop: 8,
-    fontStyle: 'italic',
   },
   waveformDisplay: {
     display: 'flex', flexDirection: 'column', gap: 4,
