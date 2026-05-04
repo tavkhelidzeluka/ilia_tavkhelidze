@@ -995,6 +995,153 @@ function buildRegionGeometry(m, n, pathFrame, r, segs, regionPoly, chords, sep, 
 
 // --- Component -------------------------------------------------------------
 
+function MainPalette({ pos, setPos, collapsed, setCollapsed, children }) {
+  const headerRef = useRef(null);
+  const dragRef = useRef(null);
+  const onPointerDown = (e) => {
+    if (e.target.closest('[data-no-drag]')) return;
+    const startX = e.clientX, startY = e.clientY;
+    const start = { x: pos.x, y: pos.y };
+    dragRef.current = { startX, startY, start };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e) => {
+    if (!dragRef.current) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
+    setPos({
+      x: Math.min(Math.max(0, dragRef.current.start.x + dx), window.innerWidth - 200),
+      y: Math.min(Math.max(0, dragRef.current.start.y + dy), window.innerHeight - 60),
+    });
+  };
+  const onPointerUp = () => { dragRef.current = null; };
+  return (
+    <div style={{...styles.palette, left: pos.x, top: pos.y}}>
+      <div
+        ref={headerRef}
+        style={{...styles.paletteHeader, cursor: 'grab'}}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
+        <span style={styles.paletteHeaderTitle} data-no-drag onClick={() => setCollapsed(!collapsed)}>
+          {collapsed ? '▸' : '▾'} Body
+        </span>
+        <span style={styles.paletteHeaderHandle}>⠿</span>
+      </div>
+      {!collapsed && children}
+    </div>
+  );
+}
+
+function Pill({ icon, label, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={active ? {...styles.palettePill, ...styles.palettePillOn} : styles.palettePill}
+    >
+      {icon} {label}
+    </button>
+  );
+}
+
+function Popover({ open, anchor, onClose, title, children }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => {
+      if (!ref.current) return;
+      if (ref.current.contains(e.target)) return;
+      if (anchor && anchor.current && anchor.current.contains(e.target)) return;
+      onClose();
+    };
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open, onClose, anchor]);
+  if (!open) return null;
+  return (
+    <div ref={ref} style={{...styles.popover, right: 18, bottom: 60}}>
+      <div style={styles.paletteHeader}>
+        <span>{title}</span>
+        <button style={styles.paletteHeaderClose} onClick={onClose} aria-label="close">×</button>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function InfoStrip({ m, n, cut, cutMode, cutInfo, parallelInfo, offCenterInfo, p2pInfo, highlightedPiece, setHighlightedPiece }) {
+  const tau = (n / m).toFixed(3);
+  let cutSummary = null;
+  if (cut) {
+    if (cutMode === 'center') {
+      cutSummary = (
+        <>
+          <span style={{opacity: 0.5}}>·</span>
+          <span>{cutInfo.K_cuts === 1 ? '1 cut' : `${cutInfo.K_cuts} cuts`}</span>
+          <span style={{opacity: 0.5}}>·</span>
+          <PieceDots count={cutInfo.orbits} highlighted={highlightedPiece} onSelect={setHighlightedPiece} />
+        </>
+      );
+    } else if (cutMode === 'parallel') {
+      cutSummary = (
+        <>
+          <span style={{opacity: 0.5}}>·</span>
+          <span>{`${parallelInfo.count} pieces`}</span>
+          <PieceDots count={parallelInfo.count} highlighted={highlightedPiece} onSelect={setHighlightedPiece} />
+        </>
+      );
+    } else if (cutMode === 'offcenter') {
+      cutSummary = (
+        <>
+          <span style={{opacity: 0.5}}>·</span>
+          <span>{`${offCenterInfo?.pieceCount ?? 0} pieces`}</span>
+          <PieceDots count={offCenterInfo?.pieceCount ?? 0} highlighted={highlightedPiece} onSelect={setHighlightedPiece} />
+        </>
+      );
+    } else {
+      cutSummary = (
+        <>
+          <span style={{opacity: 0.5}}>·</span>
+          <span>{`${p2pInfo?.pieceCount ?? 0} pieces`}</span>
+          <PieceDots count={p2pInfo?.pieceCount ?? 0} highlighted={highlightedPiece} onSelect={setHighlightedPiece} />
+        </>
+      );
+    }
+  }
+  return (
+    <div style={styles.infoStrip}>
+      <span>m={m}</span>
+      <span style={{opacity: 0.5}}>·</span>
+      <span>n={n}</span>
+      <span style={{opacity: 0.5}}>·</span>
+      <span>τ={tau}·2π</span>
+      {cutSummary}
+    </div>
+  );
+}
+
+function MobileDrawer({ open, onToggle, children }) {
+  return (
+    <div style={{
+      ...styles.drawer,
+      maxHeight: open ? '70vh' : 38,
+    }}>
+      <button onClick={onToggle} style={styles.drawerHandle} aria-label={open ? 'collapse controls' : 'expand controls'}>
+        <div style={styles.drawerHandleBar} />
+        <span style={styles.drawerHandleLabel}>{open ? 'tap to collapse' : 'tap to expand controls'}</span>
+      </button>
+      <div style={styles.drawerContent}>{children}</div>
+    </div>
+  );
+}
+
 export default function GMLBody() {
   const mountRef = useRef(null);
   const stateRef = useRef({});
@@ -1029,6 +1176,39 @@ export default function GMLBody() {
   const [separation, setSeparation] = useState(40);
   const [seamOpen, setSeamOpen] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(true);
+  const [mainPos, setMainPos] = useState({ x: 18, y: 50 });
+  const [mainCollapsed, setMainCollapsed] = useState(false);
+  const [openPopover, setOpenPopover] = useState(null); // null | 'cut' | 'sound'
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 720);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 720);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('gml.mainPalette');
+      if (raw) {
+        const v = JSON.parse(raw);
+        if (v && typeof v.x === 'number' && typeof v.y === 'number') {
+          const x = Math.min(Math.max(0, v.x), Math.max(0, window.innerWidth - 200));
+          const y = Math.min(Math.max(0, v.y), Math.max(0, window.innerHeight - 60));
+          setMainPos({ x, y });
+        }
+        if (typeof v.collapsed === 'boolean') setMainCollapsed(v.collapsed);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('gml.mainPalette', JSON.stringify({
+        x: mainPos.x, y: mainPos.y, collapsed: mainCollapsed,
+      }));
+    } catch {}
+  }, [mainPos, mainCollapsed]);
   const [show2D, setShow2D] = useState(true);
   const [highlightedPiece, setHighlightedPiece] = useState(null);
   const [hideOthers, setHideOthers] = useState(false);
@@ -2186,6 +2366,18 @@ export default function GMLBody() {
           </div>
         </div>
       )}
+      {!isMobile && (
+        <InfoStrip
+          m={m} n={n}
+          cut={cut} cutMode={cutMode}
+          cutInfo={cutInfo}
+          parallelInfo={parallelInfo}
+          offCenterInfo={offCenterInfo}
+          p2pInfo={p2pInfo}
+          highlightedPiece={highlightedPiece}
+          setHighlightedPiece={setHighlightedPiece}
+        />
+      )}
     </div>
   );
 }
@@ -2941,6 +3133,103 @@ const styles = {
     background: 'rgba(233,163,107,0.05)',
     border: '1px solid rgba(233,163,107,0.18)',
     borderRadius: 3, marginTop: 4,
+  },
+  palette: {
+    position: 'fixed',
+    background: 'linear-gradient(180deg, rgba(28,21,18,0.96), rgba(20,15,12,0.96))',
+    border: '1px solid rgba(199,134,89,0.28)',
+    borderRadius: 10,
+    padding: '12px 14px 14px',
+    width: 220,
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 11,
+    color: '#f6efe1',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,180,120,0.08)',
+    backdropFilter: 'blur(14px)',
+    WebkitBackdropFilter: 'blur(14px)',
+    zIndex: 10,
+    userSelect: 'none',
+  },
+  paletteHeader: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    fontSize: 9, letterSpacing: '0.18em', color: '#c78659', textTransform: 'uppercase',
+    borderBottom: '1px solid rgba(246,239,225,0.08)',
+    paddingBottom: 8, marginBottom: 10,
+  },
+  paletteHeaderTitle: { cursor: 'pointer' },
+  paletteHeaderHandle: { color: 'rgba(246,239,225,0.35)', cursor: 'grab', fontSize: 13, lineHeight: 1 },
+  paletteHeaderClose: {
+    background: 'transparent', border: 'none', color: 'rgba(246,239,225,0.55)',
+    cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0, marginLeft: 6,
+  },
+  palettePill: {
+    background: 'rgba(20,16,14,0.92)',
+    border: '1px solid rgba(199,134,89,0.28)',
+    borderRadius: 18,
+    padding: '8px 14px',
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 10,
+    letterSpacing: '0.15em',
+    color: 'rgba(246,239,225,0.65)',
+    cursor: 'pointer',
+    textTransform: 'uppercase',
+    backdropFilter: 'blur(10px)',
+    WebkitBackdropFilter: 'blur(10px)',
+  },
+  palettePillOn: {
+    background: 'linear-gradient(180deg, rgba(122,74,48,0.92), rgba(58,40,32,0.92))',
+    borderColor: 'rgba(255,217,179,0.5)',
+    color: '#ffd9b3',
+  },
+  pillRow: {
+    position: 'fixed',
+    bottom: 18, right: 18,
+    display: 'flex', gap: 8,
+    zIndex: 10,
+  },
+  infoStrip: {
+    position: 'fixed',
+    bottom: 18, left: '50%', transform: 'translateX(-50%)',
+    background: 'rgba(20,16,14,0.92)',
+    border: '1px solid rgba(199,134,89,0.28)',
+    borderRadius: 14,
+    padding: '6px 14px',
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 10,
+    letterSpacing: '0.15em',
+    color: 'rgba(246,239,225,0.65)',
+    backdropFilter: 'blur(10px)',
+    WebkitBackdropFilter: 'blur(10px)',
+    display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+    maxWidth: 'calc(100vw - 320px)',
+    zIndex: 10,
+    pointerEvents: 'auto',
+  },
+  popover: {
+    position: 'fixed',
+    background: 'linear-gradient(180deg, rgba(28,21,18,0.96), rgba(20,15,12,0.96))',
+    border: '1px solid rgba(199,134,89,0.28)',
+    borderRadius: 10,
+    padding: '12px 14px 14px',
+    width: 260,
+    maxHeight: '70vh',
+    overflowY: 'auto',
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 11,
+    color: '#f6efe1',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,180,120,0.08)',
+    backdropFilter: 'blur(14px)',
+    WebkitBackdropFilter: 'blur(14px)',
+    zIndex: 20,
+  },
+  mobileSection: {
+    borderTop: '1px solid rgba(246,239,225,0.06)',
+    paddingTop: 10, marginTop: 10,
+  },
+  mobileSectionHeader: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    fontSize: 9, letterSpacing: '0.18em', color: '#c78659', textTransform: 'uppercase',
+    cursor: 'pointer', marginBottom: 8,
   },
   modeRow: { display: 'flex', gap: 4, marginBottom: 2 },
   modeBtn: {
