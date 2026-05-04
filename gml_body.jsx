@@ -1146,6 +1146,7 @@ function MobileDrawer({ open, onToggle, children }) {
 export default function GMLBody() {
   const mountRef = useRef(null);
   const stateRef = useRef({});
+  const soundPillRef = useRef(null);
   const [m, setM] = useState(3);
   const [n, setN] = useState(1);
   const [autoRotate, setAutoRotate] = useState(true);
@@ -1766,7 +1767,7 @@ export default function GMLBody() {
     const seamFrac = seamOpen / 100;
     const thetaMax = 2 * Math.PI * (1 - 0.3 * seamFrac);
     const endCaps = cut && seamOpen > 0;
-    const soundMode = tab === 'sound';
+    const soundMode = openPopover === 'sound' || wavePlaying;
     stateRef.current.rebuild?.(
       m, n, showRidges, cut, cutMode, sliceCount, offsetD / 100,
       (cutPhi / 180) * Math.PI,
@@ -1780,7 +1781,7 @@ export default function GMLBody() {
       gradient && !soundMode,
       soundMode,
     );
-  }, [tab, m, n, showRidges, cut, cutMode, sliceCount, offsetD, cutPhi, separation, seamOpen, phi1, phi2, bladeShape, bladeAmount, bladeProfile, gradient, pathShape, circleR, ellipseA, ellipseB, knotR, knotr, knotP, knotQ, lemA]);
+  }, [openPopover, wavePlaying, m, n, showRidges, cut, cutMode, sliceCount, offsetD, cutPhi, separation, seamOpen, phi1, phi2, bladeShape, bladeAmount, bladeProfile, gradient, pathShape, circleR, ellipseA, ellipseB, knotR, knotr, knotP, knotQ, lemA]);
 
   // Push the live sound parameters into stateRef so the tick loop sees them
   // without rebuilding the geometry every time the user wiggles a slider.
@@ -1949,14 +1950,6 @@ export default function GMLBody() {
     polygonBufferRef.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // When leaving the sound tab, fade audio out.
-  useEffect(() => {
-    if (tab !== 'sound' && wavePlaying) {
-      togglePlay();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
-
   const note = (() => {
     if (m === 2 && n % 2 === 1) return 'Classical Möbius strip · single-sided';
     if (n === 0) return 'Untwisted polygonal torus';
@@ -2051,8 +2044,35 @@ export default function GMLBody() {
           </MainPalette>
           <div style={styles.pillRow}>
             <Pill icon="✂" label="Cut" active={cut} onClick={() => setCut(!cut)} />
-            <Pill icon="♪" label="Sound" active={openPopover === 'sound'} onClick={() => setOpenPopover(openPopover === 'sound' ? null : 'sound')} />
+            <span ref={soundPillRef}>
+              <Pill icon="♪" label="Sound" active={openPopover === 'sound'}
+                    onClick={() => setOpenPopover(openPopover === 'sound' ? null : 'sound')} />
+            </span>
           </div>
+          <Popover open={openPopover === 'sound'} anchor={soundPillRef} onClose={() => setOpenPopover(null)} title="♪ Sound">
+            <WaveformDisplay m={m} />
+            <Slider label="p" min={0} max={8} value={pMode} onChange={setPMode} suffix={`${pMode}`} />
+            <Slider label="q" min={0} max={6} value={qMode} onChange={setQMode} suffix={`${qMode}`} />
+            <Slider label="Hz" min={50} max={1500} value={waveFreq} onChange={setWaveFreq} suffix={`${waveFreq}`} />
+            <Slider label="amp" min={0} max={100} value={waveAmp} onChange={setWaveAmp} suffix={`${waveAmp}%`} />
+            <button
+              onClick={togglePlay}
+              style={{
+                marginTop: 8, padding: '8px 14px',
+                background: wavePlaying
+                  ? 'linear-gradient(180deg, rgba(122,74,48,0.92), rgba(58,40,32,0.92))'
+                  : 'transparent',
+                border: '1px solid rgba(199,134,89,0.4)',
+                borderRadius: 18,
+                color: wavePlaying ? '#ffd9b3' : 'rgba(246,239,225,0.65)',
+                fontFamily: '"JetBrains Mono", monospace',
+                fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase',
+                cursor: 'pointer', width: '100%',
+              }}
+            >
+              {wavePlaying ? '■ Stop' : '▶ Play'}
+            </button>
+          </Popover>
         </>
       )}
       {isMobile && (
