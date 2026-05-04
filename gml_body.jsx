@@ -2006,7 +2006,7 @@ export default function GMLBody() {
       )}
       <Slider label="n" min={0} max={Math.max(12, m * 2, n + 2)} value={n} onChange={(v) => setN(Math.max(0, v))} editable />
       <Slider label="m" min={2} max={Math.max(12, m + 2)} value={m} onChange={(v) => setM(Math.max(2, v))} editable />
-      <div style={styles.toggleRow}>
+      <div style={{...styles.toggleRow, flexDirection: 'column'}}>
         <Toggle label="auto-rotate" on={autoRotate} onChange={setAutoRotate} />
         <Toggle label="ridges" on={showRidges && !cut} onChange={setShowRidges} disabled={cut} />
         <Toggle label="gradient" on={gradient} onChange={setGradient} />
