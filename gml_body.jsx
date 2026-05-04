@@ -2000,6 +2000,62 @@ export default function GMLBody() {
         )}
       </div>
 
+      {!isMobile && (
+        <>
+          <MainPalette pos={mainPos} setPos={setMainPos} collapsed={mainCollapsed} setCollapsed={setMainCollapsed}>
+            <div style={styles.modeRow}>
+              <button onClick={() => setPathShape('circle')} style={{...styles.modeBtn, ...(pathShape === 'circle' ? styles.modeBtnOn : {})}}>circle</button>
+              <button onClick={() => setPathShape('ellipse')} style={{...styles.modeBtn, ...(pathShape === 'ellipse' ? styles.modeBtnOn : {})}}>ellipse</button>
+              <button onClick={() => setPathShape('torusKnot')} style={{...styles.modeBtn, ...(pathShape === 'torusKnot' ? styles.modeBtnOn : {})}}>knot</button>
+              <button onClick={() => setPathShape('lemniscate')} style={{...styles.modeBtn, ...(pathShape === 'lemniscate' ? styles.modeBtnOn : {})}}>figure-8</button>
+            </div>
+            {pathShape === 'circle' && (
+              <Slider label="R" min={0.5} max={5} step={0.05} value={circleR} onChange={setCircleR} editable />
+            )}
+            {pathShape === 'ellipse' && (
+              <>
+                <Slider label="a" min={0.5} max={5} step={0.05} value={ellipseA} onChange={setEllipseA} editable />
+                <Slider label="b" min={0.5} max={5} step={0.05} value={ellipseB} onChange={setEllipseB} editable />
+              </>
+            )}
+            {pathShape === 'torusKnot' && (
+              <>
+                <Slider label="R" min={0.5} max={5} step={0.05} value={knotR} onChange={setKnotR} editable />
+                <Slider label="r" min={0.85} max={2} step={0.05} value={knotr} onChange={setKnotr} editable />
+                <Slider label="p" min={1} max={9} value={knotP} onChange={(v) => {
+                  const np = Math.max(1, v | 0);
+                  if (gcd(np, knotQ) === 1) { setKnotP(np); return; }
+                  let nq = knotQ + 1;
+                  while (gcd(np, nq) !== 1 && nq < 20) nq++;
+                  setKnotP(np); setKnotQ(nq);
+                }} editable />
+                <Slider label="q" min={1} max={9} value={knotQ} onChange={(v) => {
+                  const nq = Math.max(1, v | 0);
+                  if (gcd(knotP, nq) === 1) { setKnotQ(nq); return; }
+                  let np = knotP + 1;
+                  while (gcd(np, nq) !== 1 && np < 20) np++;
+                  setKnotP(np); setKnotQ(nq);
+                }} editable />
+              </>
+            )}
+            {pathShape === 'lemniscate' && (
+              <Slider label="a" min={0.5} max={5} step={0.05} value={lemA} onChange={setLemA} editable />
+            )}
+            <Slider label="n" min={0} max={Math.max(12, m * 2, n + 2)} value={n} onChange={(v) => setN(Math.max(0, v))} editable />
+            <Slider label="m" min={2} max={Math.max(12, m + 2)} value={m} onChange={(v) => setM(Math.max(2, v))} editable />
+            <div style={styles.toggleRow}>
+              <Toggle label="auto-rotate" on={autoRotate} onChange={setAutoRotate} />
+              <Toggle label="ridges" on={showRidges && !cut} onChange={setShowRidges} disabled={cut} />
+              <Toggle label="gradient" on={gradient} onChange={setGradient} />
+            </div>
+          </MainPalette>
+          <div style={styles.pillRow}>
+            <Pill icon="✂" label="Cut" active={cut} onClick={() => setCut(!cut)} />
+            <Pill icon="♪" label="Sound" active={openPopover === 'sound'} onClick={() => setOpenPopover(openPopover === 'sound' ? null : 'sound')} />
+          </div>
+        </>
+      )}
+      {isMobile && (
       <div style={{
         ...styles.drawer,
         maxHeight: drawerOpen ? '70vh' : 38,
@@ -2312,6 +2368,7 @@ export default function GMLBody() {
           </div>
         </div>
       </div>
+      )}
 
       <footer style={styles.footer}>
         {tab === 'geometry'
