@@ -1972,6 +1972,143 @@ export default function GMLBody() {
     return `${g} disjoint ridge cycles`;
   })();
 
+  const bodyControls = (
+    <>
+      <div style={styles.modeRow}>
+        <button onClick={() => setPathShape('circle')} style={{...styles.modeBtn, ...(pathShape === 'circle' ? styles.modeBtnOn : {})}}>circle</button>
+        <button onClick={() => setPathShape('ellipse')} style={{...styles.modeBtn, ...(pathShape === 'ellipse' ? styles.modeBtnOn : {})}}>ellipse</button>
+        <button onClick={() => setPathShape('torusKnot')} style={{...styles.modeBtn, ...(pathShape === 'torusKnot' ? styles.modeBtnOn : {})}}>knot</button>
+        <button onClick={() => setPathShape('lemniscate')} style={{...styles.modeBtn, ...(pathShape === 'lemniscate' ? styles.modeBtnOn : {})}}>figure-8</button>
+      </div>
+      {pathShape === 'circle' && (
+        <Slider label="R" min={0.5} max={5} step={0.05} value={circleR} onChange={setCircleR} editable />
+      )}
+      {pathShape === 'ellipse' && (
+        <>
+          <Slider label="a" min={0.5} max={5} step={0.05} value={ellipseA} onChange={setEllipseA} editable />
+          <Slider label="b" min={0.5} max={5} step={0.05} value={ellipseB} onChange={setEllipseB} editable />
+        </>
+      )}
+      {pathShape === 'torusKnot' && (
+        <>
+          <Slider label="R" min={0.5} max={5} step={0.05} value={knotR} onChange={setKnotR} editable />
+          <Slider label="r" min={0.85} max={2} step={0.05} value={knotr} onChange={setKnotr} editable />
+          <Slider label="p" min={1} max={9} value={knotP} onChange={(v) => {
+            const np = Math.max(1, v | 0);
+            if (gcd(np, knotQ) === 1) { setKnotP(np); return; }
+            let nq = knotQ + 1;
+            while (gcd(np, nq) !== 1 && nq < 20) nq++;
+            setKnotP(np); setKnotQ(nq);
+          }} editable />
+          <Slider label="q" min={1} max={9} value={knotQ} onChange={(v) => {
+            const nq = Math.max(1, v | 0);
+            if (gcd(knotP, nq) === 1) { setKnotQ(nq); return; }
+            let np = knotP + 1;
+            while (gcd(np, nq) !== 1 && np < 20) np++;
+            setKnotP(np); setKnotQ(nq);
+          }} editable />
+        </>
+      )}
+      {pathShape === 'lemniscate' && (
+        <Slider label="a" min={0.5} max={5} step={0.05} value={lemA} onChange={setLemA} editable />
+      )}
+      <Slider label="n" min={0} max={Math.max(12, m * 2, n + 2)} value={n} onChange={(v) => setN(Math.max(0, v))} editable />
+      <Slider label="m" min={2} max={Math.max(12, m + 2)} value={m} onChange={(v) => setM(Math.max(2, v))} editable />
+      <div style={styles.toggleRow}>
+        <Toggle label="auto-rotate" on={autoRotate} onChange={setAutoRotate} />
+        <Toggle label="ridges" on={showRidges && !cut} onChange={setShowRidges} disabled={cut} />
+        <Toggle label="gradient" on={gradient} onChange={setGradient} />
+      </div>
+    </>
+  );
+
+  const cutControls = (
+    <>
+      <div style={styles.toggleRow}>
+        <Toggle label={cut ? 'cutting' : 'whole'} on={cut} onChange={setCut} accent />
+      </div>
+      {cut && (
+        <>
+          <div style={{...styles.modeRow, marginTop: 8}}>
+            <button onClick={() => setCutMode('center')} style={{...styles.modeBtn, ...(cutMode === 'center' ? styles.modeBtnOn : {})}}>center</button>
+            <button onClick={() => setCutMode('parallel')} style={{...styles.modeBtn, ...(cutMode === 'parallel' ? styles.modeBtnOn : {})}}>parallel</button>
+            <button onClick={() => setCutMode('offcenter')} style={{...styles.modeBtn, ...(cutMode === 'offcenter' ? styles.modeBtnOn : {})}}>off-center</button>
+            <button onClick={() => setCutMode('p2p')} style={{...styles.modeBtn, ...(cutMode === 'p2p' ? styles.modeBtnOn : {})}}>p→p</button>
+          </div>
+          {cutMode === 'parallel' && (
+            <Slider label="N" min={1} max={5} value={sliceCount} onChange={setSliceCount} suffix={`${sliceCount}`} />
+          )}
+          {cutMode === 'offcenter' && (
+            <Slider label="d" min={1} max={95} value={offsetD} onChange={setOffsetD} suffix={`${offsetD}%`} />
+          )}
+          {cutMode === 'p2p' && (
+            <>
+              <Slider label="P₁" min={0} max={359} value={phi1} onChange={setPhi1} suffix={`${phi1}°`} />
+              <Slider label="P₂" min={0} max={359} value={phi2} onChange={setPhi2} suffix={`${phi2}°`} />
+            </>
+          )}
+          {cutMode !== 'p2p' && (
+            <Slider label="θ°" min={0}
+              max={cutMode === 'center' ? Math.round(180 / cutInfo.K_cuts) : 180}
+              value={cutMode === 'center' ? Math.min(cutPhi, Math.round(180 / cutInfo.K_cuts)) : cutPhi}
+              onChange={setCutPhi}
+              suffix={`${cutMode === 'center' ? Math.min(cutPhi, Math.round(180 / cutInfo.K_cuts)) : cutPhi}°`} />
+          )}
+          <Slider label="gap" min={0} max={100} value={separation} onChange={setSeparation} suffix={`${separation}%`} />
+          <Slider label="open" min={0} max={100} value={seamOpen} onChange={setSeamOpen} suffix={`${seamOpen}%`} />
+          {cutMode !== 'center' && (
+            <>
+              <div style={styles.bladeRow}>
+                <span style={styles.bladeLabel}>blade</span>
+                <button onClick={() => setBladeShape('straight')} style={{...styles.bladeBtn, ...(bladeShape === 'straight' ? styles.bladeBtnOn : {})}}>straight</button>
+                <button onClick={() => setBladeShape('curved')} style={{...styles.bladeBtn, ...(bladeShape === 'curved' ? styles.bladeBtnOn : {})}}>curved</button>
+                <button onClick={() => setBladeShape('zigzag')} style={{...styles.bladeBtn, ...(bladeShape === 'zigzag' ? styles.bladeBtnOn : {})}}>zig-zag</button>
+                <button onClick={() => setBladeShape('custom')} style={{...styles.bladeBtn, ...(bladeShape === 'custom' ? styles.bladeBtnOn : {})}}>draw</button>
+              </div>
+              {bladeShape !== 'straight' && (
+                <Slider label="amp" min={0} max={100} value={bladeAmount} onChange={setBladeAmount} suffix={`${bladeAmount}%`} />
+              )}
+              {bladeShape === 'custom' && (
+                <BladeProfileEditor profile={bladeProfile} setProfile={setBladeProfile} N={PROFILE_N} />
+              )}
+            </>
+          )}
+          <div style={styles.toggleRow}>
+            <Toggle label="2D view" on={show2D} onChange={setShow2D} />
+            <Toggle label="solo piece" on={hideOthers} onChange={setHideOthers} />
+          </div>
+        </>
+      )}
+    </>
+  );
+
+  const soundControls = (
+    <>
+      <WaveformDisplay m={m} />
+      <Slider label="p" min={0} max={8} value={pMode} onChange={setPMode} suffix={`${pMode}`} />
+      <Slider label="q" min={0} max={6} value={qMode} onChange={setQMode} suffix={`${qMode}`} />
+      <Slider label="Hz" min={50} max={1500} value={waveFreq} onChange={setWaveFreq} suffix={`${waveFreq}`} />
+      <Slider label="amp" min={0} max={100} value={waveAmp} onChange={setWaveAmp} suffix={`${waveAmp}%`} />
+      <button
+        onClick={togglePlay}
+        style={{
+          marginTop: 8, padding: '8px 14px',
+          background: wavePlaying
+            ? 'linear-gradient(180deg, rgba(122,74,48,0.92), rgba(58,40,32,0.92))'
+            : 'transparent',
+          border: '1px solid rgba(199,134,89,0.4)',
+          borderRadius: 18,
+          color: wavePlaying ? '#ffd9b3' : 'rgba(246,239,225,0.65)',
+          fontFamily: '"JetBrains Mono", monospace',
+          fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase',
+          cursor: 'pointer', width: '100%',
+        }}
+      >
+        {wavePlaying ? '■ Stop' : '▶ Play'}
+      </button>
+    </>
+  );
+
   return (
     <div style={styles.root}>
       <style>{cssGlobal}</style>
@@ -2010,51 +2147,7 @@ export default function GMLBody() {
       {!isMobile && (
         <>
           <MainPalette pos={mainPos} setPos={setMainPos} collapsed={mainCollapsed} setCollapsed={setMainCollapsed}>
-            <div style={styles.modeRow}>
-              <button onClick={() => setPathShape('circle')} style={{...styles.modeBtn, ...(pathShape === 'circle' ? styles.modeBtnOn : {})}}>circle</button>
-              <button onClick={() => setPathShape('ellipse')} style={{...styles.modeBtn, ...(pathShape === 'ellipse' ? styles.modeBtnOn : {})}}>ellipse</button>
-              <button onClick={() => setPathShape('torusKnot')} style={{...styles.modeBtn, ...(pathShape === 'torusKnot' ? styles.modeBtnOn : {})}}>knot</button>
-              <button onClick={() => setPathShape('lemniscate')} style={{...styles.modeBtn, ...(pathShape === 'lemniscate' ? styles.modeBtnOn : {})}}>figure-8</button>
-            </div>
-            {pathShape === 'circle' && (
-              <Slider label="R" min={0.5} max={5} step={0.05} value={circleR} onChange={setCircleR} editable />
-            )}
-            {pathShape === 'ellipse' && (
-              <>
-                <Slider label="a" min={0.5} max={5} step={0.05} value={ellipseA} onChange={setEllipseA} editable />
-                <Slider label="b" min={0.5} max={5} step={0.05} value={ellipseB} onChange={setEllipseB} editable />
-              </>
-            )}
-            {pathShape === 'torusKnot' && (
-              <>
-                <Slider label="R" min={0.5} max={5} step={0.05} value={knotR} onChange={setKnotR} editable />
-                <Slider label="r" min={0.85} max={2} step={0.05} value={knotr} onChange={setKnotr} editable />
-                <Slider label="p" min={1} max={9} value={knotP} onChange={(v) => {
-                  const np = Math.max(1, v | 0);
-                  if (gcd(np, knotQ) === 1) { setKnotP(np); return; }
-                  let nq = knotQ + 1;
-                  while (gcd(np, nq) !== 1 && nq < 20) nq++;
-                  setKnotP(np); setKnotQ(nq);
-                }} editable />
-                <Slider label="q" min={1} max={9} value={knotQ} onChange={(v) => {
-                  const nq = Math.max(1, v | 0);
-                  if (gcd(knotP, nq) === 1) { setKnotQ(nq); return; }
-                  let np = knotP + 1;
-                  while (gcd(np, nq) !== 1 && np < 20) np++;
-                  setKnotP(np); setKnotQ(nq);
-                }} editable />
-              </>
-            )}
-            {pathShape === 'lemniscate' && (
-              <Slider label="a" min={0.5} max={5} step={0.05} value={lemA} onChange={setLemA} editable />
-            )}
-            <Slider label="n" min={0} max={Math.max(12, m * 2, n + 2)} value={n} onChange={(v) => setN(Math.max(0, v))} editable />
-            <Slider label="m" min={2} max={Math.max(12, m + 2)} value={m} onChange={(v) => setM(Math.max(2, v))} editable />
-            <div style={styles.toggleRow}>
-              <Toggle label="auto-rotate" on={autoRotate} onChange={setAutoRotate} />
-              <Toggle label="ridges" on={showRidges && !cut} onChange={setShowRidges} disabled={cut} />
-              <Toggle label="gradient" on={gradient} onChange={setGradient} />
-            </div>
+            {bodyControls}
           </MainPalette>
           <div style={styles.pillRow}>
             <span ref={cutPillRef}>
@@ -2067,401 +2160,28 @@ export default function GMLBody() {
             </span>
           </div>
           <Popover open={openPopover === 'cut'} anchor={cutPillRef} onClose={() => setOpenPopover(null)} title="✂ Cut">
-            <div style={styles.toggleRow}>
-              <Toggle label={cut ? 'cutting' : 'whole'} on={cut} onChange={setCut} accent />
-            </div>
-            {cut && (
-              <>
-                <div style={{...styles.modeRow, marginTop: 8}}>
-                  <button onClick={() => setCutMode('center')} style={{...styles.modeBtn, ...(cutMode === 'center' ? styles.modeBtnOn : {})}}>center</button>
-                  <button onClick={() => setCutMode('parallel')} style={{...styles.modeBtn, ...(cutMode === 'parallel' ? styles.modeBtnOn : {})}}>parallel</button>
-                  <button onClick={() => setCutMode('offcenter')} style={{...styles.modeBtn, ...(cutMode === 'offcenter' ? styles.modeBtnOn : {})}}>off-center</button>
-                  <button onClick={() => setCutMode('p2p')} style={{...styles.modeBtn, ...(cutMode === 'p2p' ? styles.modeBtnOn : {})}}>p→p</button>
-                </div>
-                {cutMode === 'parallel' && (
-                  <Slider label="N" min={1} max={5} value={sliceCount} onChange={setSliceCount} suffix={`${sliceCount}`} />
-                )}
-                {cutMode === 'offcenter' && (
-                  <Slider label="d" min={1} max={95} value={offsetD} onChange={setOffsetD} suffix={`${offsetD}%`} />
-                )}
-                {cutMode === 'p2p' && (
-                  <>
-                    <Slider label="P₁" min={0} max={359} value={phi1} onChange={setPhi1} suffix={`${phi1}°`} />
-                    <Slider label="P₂" min={0} max={359} value={phi2} onChange={setPhi2} suffix={`${phi2}°`} />
-                  </>
-                )}
-                {cutMode !== 'p2p' && (
-                  <Slider label="θ°" min={0}
-                    max={cutMode === 'center' ? Math.round(180 / cutInfo.K_cuts) : 180}
-                    value={cutMode === 'center' ? Math.min(cutPhi, Math.round(180 / cutInfo.K_cuts)) : cutPhi}
-                    onChange={setCutPhi}
-                    suffix={`${cutMode === 'center' ? Math.min(cutPhi, Math.round(180 / cutInfo.K_cuts)) : cutPhi}°`} />
-                )}
-                <Slider label="gap" min={0} max={100} value={separation} onChange={setSeparation} suffix={`${separation}%`} />
-                <Slider label="open" min={0} max={100} value={seamOpen} onChange={setSeamOpen} suffix={`${seamOpen}%`} />
-                {cutMode !== 'center' && (
-                  <>
-                    <div style={styles.bladeRow}>
-                      <span style={styles.bladeLabel}>blade</span>
-                      <button onClick={() => setBladeShape('straight')} style={{...styles.bladeBtn, ...(bladeShape === 'straight' ? styles.bladeBtnOn : {})}}>straight</button>
-                      <button onClick={() => setBladeShape('curved')} style={{...styles.bladeBtn, ...(bladeShape === 'curved' ? styles.bladeBtnOn : {})}}>curved</button>
-                      <button onClick={() => setBladeShape('zigzag')} style={{...styles.bladeBtn, ...(bladeShape === 'zigzag' ? styles.bladeBtnOn : {})}}>zig-zag</button>
-                      <button onClick={() => setBladeShape('custom')} style={{...styles.bladeBtn, ...(bladeShape === 'custom' ? styles.bladeBtnOn : {})}}>draw</button>
-                    </div>
-                    {bladeShape !== 'straight' && (
-                      <Slider label="amp" min={0} max={100} value={bladeAmount} onChange={setBladeAmount} suffix={`${bladeAmount}%`} />
-                    )}
-                    {bladeShape === 'custom' && (
-                      <BladeProfileEditor profile={bladeProfile} setProfile={setBladeProfile} N={PROFILE_N} />
-                    )}
-                  </>
-                )}
-                <div style={styles.toggleRow}>
-                  <Toggle label="2D view" on={show2D} onChange={setShow2D} />
-                  <Toggle label="solo piece" on={hideOthers} onChange={setHideOthers} />
-                </div>
-              </>
-            )}
+            {cutControls}
           </Popover>
           <Popover open={openPopover === 'sound'} anchor={soundPillRef} onClose={() => setOpenPopover(null)} title="♪ Sound">
-            <WaveformDisplay m={m} />
-            <Slider label="p" min={0} max={8} value={pMode} onChange={setPMode} suffix={`${pMode}`} />
-            <Slider label="q" min={0} max={6} value={qMode} onChange={setQMode} suffix={`${qMode}`} />
-            <Slider label="Hz" min={50} max={1500} value={waveFreq} onChange={setWaveFreq} suffix={`${waveFreq}`} />
-            <Slider label="amp" min={0} max={100} value={waveAmp} onChange={setWaveAmp} suffix={`${waveAmp}%`} />
-            <button
-              onClick={togglePlay}
-              style={{
-                marginTop: 8, padding: '8px 14px',
-                background: wavePlaying
-                  ? 'linear-gradient(180deg, rgba(122,74,48,0.92), rgba(58,40,32,0.92))'
-                  : 'transparent',
-                border: '1px solid rgba(199,134,89,0.4)',
-                borderRadius: 18,
-                color: wavePlaying ? '#ffd9b3' : 'rgba(246,239,225,0.65)',
-                fontFamily: '"JetBrains Mono", monospace',
-                fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase',
-                cursor: 'pointer', width: '100%',
-              }}
-            >
-              {wavePlaying ? '■ Stop' : '▶ Play'}
-            </button>
+            {soundControls}
           </Popover>
         </>
       )}
+
       {isMobile && (
-      <div style={{
-        ...styles.drawer,
-        maxHeight: drawerOpen ? '70vh' : 38,
-      }}>
-        <button
-          onClick={() => setDrawerOpen(!drawerOpen)}
-          style={styles.drawerHandle}
-          aria-label={drawerOpen ? 'collapse controls' : 'expand controls'}
-        >
-          <div style={styles.drawerHandleBar} />
-          <span style={styles.drawerHandleLabel}>
-            {drawerOpen ? 'tap to collapse' : 'tap to expand controls'}
-          </span>
-        </button>
-
-        <div style={styles.drawerContent}>
-          <div style={styles.tabRow}>
-            <button
-              onClick={() => setTab('geometry')}
-              style={{...styles.tabBtn, ...(tab === 'geometry' ? styles.tabBtnOn : {})}}>
-              geometry
-            </button>
-            <button
-              onClick={() => setTab('sound')}
-              style={{...styles.tabBtn, ...(tab === 'sound' ? styles.tabBtnOn : {})}}>
-              sound
-            </button>
+        <MobileDrawer open={drawerOpen} onToggle={() => setDrawerOpen(!drawerOpen)}>
+          <div style={{padding: '6px 4px 10px'}}>
+            {bodyControls}
           </div>
-
-          <div style={styles.readout}>
-            <div style={styles.param}>
-              <span style={styles.paramLabel}>m</span>
-              <span style={styles.paramVal}>{m}</span>
-              <span style={styles.paramHint}>sides</span>
-            </div>
-            <div style={styles.param}>
-              <span style={styles.paramLabel}>n</span>
-              <span style={styles.paramVal}>{n}</span>
-              <span style={styles.paramHint}>twist</span>
-            </div>
-            <div style={styles.param}>
-              <span style={styles.paramLabel}>τ</span>
-              <span style={styles.paramVal}>{(n/m).toFixed(3)}·2π</span>
-              <span style={styles.paramHint}>per loop</span>
-            </div>
+          <div style={styles.mobileSection}>
+            <div style={styles.mobileSectionHeader}><span>✂ Cut</span></div>
+            {cutControls}
           </div>
-
-          {tab === 'geometry' && (
-          <div style={styles.note}>
-            {!cut ? note : cutMode === 'center' ? (
-              <span style={{display:'inline-flex', alignItems:'center', gap:8, flexWrap:'wrap', justifyContent:'center'}}>
-                <span>{cutInfo.K_cuts === 1 ? '1 chord cut' : `${cutInfo.K_cuts} chord cuts`}</span>
-                <span style={{opacity:0.5}}>·</span>
-                <span>{cutInfo.numWedges} wedges</span>
-                <span style={{opacity:0.5}}>·</span>
-                <span style={{display:'inline-flex', alignItems:'center', gap:5}}>
-                  <PieceDots count={cutInfo.orbits} highlighted={highlightedPiece} onSelect={setHighlightedPiece} />
-                  <span style={{marginLeft:2}}>
-                    {cutInfo.orbits === 1 ? '1 piece' : `${cutInfo.orbits} pieces`}
-                  </span>
-                </span>
-              </span>
-            ) : cutMode === 'parallel' ? (
-              <span style={{display:'inline-flex', alignItems:'center', gap:8, flexWrap:'wrap', justifyContent:'center'}}>
-                <span>{`${sliceCount} parallel ${sliceCount === 1 ? 'cut' : 'cuts'}`}</span>
-                <span style={{opacity:0.5}}>·</span>
-                <span>{`${sliceCount + 1} strips`}</span>
-                <span style={{opacity:0.5}}>·</span>
-                <span style={{display:'inline-flex', alignItems:'center', gap:5}}>
-                  <PieceDots count={parallelInfo.count} highlighted={highlightedPiece} onSelect={setHighlightedPiece} />
-                  <span style={{marginLeft:2}}>
-                    {parallelInfo.count === 1 ? '1 piece' : `${parallelInfo.count} pieces`}
-                  </span>
-                </span>
-                {!parallelInfo.closes && (
-                  <span style={{color:'#e88', opacity:0.85, fontSize:10, marginLeft:4}}>
-                    ⚠ open seam
-                  </span>
-                )}
-              </span>
-            ) : cutMode === 'offcenter' ? (
-              <span style={{display:'inline-flex', alignItems:'center', gap:8, flexWrap:'wrap', justifyContent:'center'}}>
-                <span>{`${offCenterInfo?.chordCount ?? 0} ${(offCenterInfo?.chordCount ?? 0) === 1 ? 'chord' : 'chords'}`}</span>
-                <span style={{opacity:0.5}}>·</span>
-                <span>{`${offCenterInfo?.regionCount ?? 0} regions`}</span>
-                <span style={{opacity:0.5}}>·</span>
-                <span style={{display:'inline-flex', alignItems:'center', gap:5}}>
-                  <PieceDots count={offCenterInfo?.pieceCount ?? 0} highlighted={highlightedPiece} onSelect={setHighlightedPiece} />
-                  <span style={{marginLeft:2}}>
-                    {(offCenterInfo?.pieceCount ?? 0) === 1 ? '1 piece' : `${offCenterInfo?.pieceCount ?? 0} pieces`}
-                  </span>
-                </span>
-              </span>
-            ) : (
-              <span style={{display:'inline-flex', alignItems:'center', gap:8, flexWrap:'wrap', justifyContent:'center'}}>
-                <span>{`${p2pInfo?.chordCount ?? 0} ${(p2pInfo?.chordCount ?? 0) === 1 ? 'chord' : 'chords'}`}</span>
-                <span style={{opacity:0.5}}>·</span>
-                <span>{`${p2pInfo?.regionCount ?? 0} regions`}</span>
-                <span style={{opacity:0.5}}>·</span>
-                <span style={{display:'inline-flex', alignItems:'center', gap:5}}>
-                  <PieceDots count={p2pInfo?.pieceCount ?? 0} highlighted={highlightedPiece} onSelect={setHighlightedPiece} />
-                  <span style={{marginLeft:2}}>
-                    {(p2pInfo?.pieceCount ?? 0) === 1 ? '1 piece' : `${p2pInfo?.pieceCount ?? 0} pieces`}
-                  </span>
-                </span>
-              </span>
-            )}
+          <div style={styles.mobileSection}>
+            <div style={styles.mobileSectionHeader}><span>♪ Sound</span></div>
+            {soundControls}
           </div>
-          )}
-
-          <div style={styles.controls}>
-            <div style={styles.modeRow}>
-              <button
-                onClick={() => setPathShape('circle')}
-                style={{...styles.modeBtn, ...(pathShape === 'circle' ? styles.modeBtnOn : {})}}>
-                circle
-              </button>
-              <button
-                onClick={() => setPathShape('ellipse')}
-                style={{...styles.modeBtn, ...(pathShape === 'ellipse' ? styles.modeBtnOn : {})}}>
-                ellipse
-              </button>
-              <button
-                onClick={() => setPathShape('torusKnot')}
-                style={{...styles.modeBtn, ...(pathShape === 'torusKnot' ? styles.modeBtnOn : {})}}>
-                knot
-              </button>
-              <button
-                onClick={() => setPathShape('lemniscate')}
-                style={{...styles.modeBtn, ...(pathShape === 'lemniscate' ? styles.modeBtnOn : {})}}>
-                figure-8
-              </button>
-            </div>
-            {pathShape === 'circle' && (
-              <Slider label="R" min={0.5} max={5} step={0.05} value={circleR}
-                onChange={setCircleR} editable />
-            )}
-            {pathShape === 'ellipse' && (
-              <>
-                <Slider label="a" min={0.5} max={5} step={0.05} value={ellipseA}
-                  onChange={setEllipseA} editable />
-                <Slider label="b" min={0.5} max={5} step={0.05} value={ellipseB}
-                  onChange={setEllipseB} editable />
-              </>
-            )}
-            {pathShape === 'torusKnot' && (
-              <>
-                <Slider label="R" min={0.5} max={5} step={0.05} value={knotR}
-                  onChange={setKnotR} editable />
-                <Slider label="r" min={0.85} max={2} step={0.05} value={knotr}
-                  onChange={setKnotr} editable />
-                <Slider label="p" min={1} max={9} value={knotP}
-                  onChange={(v) => {
-                    const np = Math.max(1, v | 0);
-                    if (gcd(np, knotQ) === 1) { setKnotP(np); return; }
-                    let nq = knotQ + 1;
-                    while (gcd(np, nq) !== 1 && nq < 20) nq++;
-                    setKnotP(np); setKnotQ(nq);
-                  }} editable />
-                <Slider label="q" min={1} max={9} value={knotQ}
-                  onChange={(v) => {
-                    const nq = Math.max(1, v | 0);
-                    if (gcd(knotP, nq) === 1) { setKnotQ(nq); return; }
-                    let np = knotP + 1;
-                    while (gcd(np, nq) !== 1 && np < 20) np++;
-                    setKnotP(np); setKnotQ(nq);
-                  }} editable />
-              </>
-            )}
-            {pathShape === 'lemniscate' && (
-              <Slider label="a" min={0.5} max={5} step={0.05} value={lemA}
-                onChange={setLemA} editable />
-            )}
-            <Slider label="n" min={0} max={Math.max(12, m * 2, n + 2)} value={n}
-              onChange={(v) => setN(Math.max(0, v))} editable />
-            <Slider label="m" min={2} max={Math.max(12, m + 2)} value={m}
-              onChange={(v) => setM(Math.max(2, v))} editable />
-
-            <div style={styles.toggleRow}>
-              <Toggle label="auto-rotate" on={autoRotate} onChange={setAutoRotate} />
-              {tab === 'geometry' && (
-                <>
-                  <Toggle label="ridges" on={showRidges && !cut} onChange={setShowRidges} disabled={cut} />
-                  <Toggle label="gradient" on={gradient} onChange={setGradient} />
-                </>
-              )}
-              {tab === 'sound' && (
-                <Toggle label={wavePlaying ? 'sound on' : 'sound off'}
-                        on={wavePlaying} onChange={togglePlay} accent />
-              )}
-              <Toggle label="cut" on={cut} onChange={setCut} accent />
-            </div>
-
-            {tab === 'sound' && (
-              <div style={styles.cutPanel}>
-                <WaveformDisplay m={m} />
-                <Slider label="p" min={0} max={8} value={pMode}
-                  onChange={setPMode} suffix={`${pMode}`} />
-                <Slider label="q" min={0} max={6} value={qMode}
-                  onChange={setQMode} suffix={`${qMode}`} />
-                <Slider label="Hz" min={50} max={1500} value={waveFreq}
-                  onChange={setWaveFreq} suffix={`${waveFreq}`} />
-                <Slider label="amp" min={0} max={100} value={waveAmp}
-                  onChange={setWaveAmp} suffix={`${waveAmp}%`} />
-                <div style={styles.soundHint}>
-                  n-gon wave from m={m}-gon · timbre tracks the cross-section
-                </div>
-              </div>
-            )}
-
-            {cut && (
-              <div style={styles.cutPanel}>
-                <div style={styles.modeRow}>
-                  <button
-                    onClick={() => setCutMode('center')}
-                    style={{...styles.modeBtn, ...(cutMode === 'center' ? styles.modeBtnOn : {})}}>
-                    center
-                  </button>
-                  <button
-                    onClick={() => setCutMode('parallel')}
-                    style={{...styles.modeBtn, ...(cutMode === 'parallel' ? styles.modeBtnOn : {})}}>
-                    parallel
-                  </button>
-                  <button
-                    onClick={() => setCutMode('offcenter')}
-                    style={{...styles.modeBtn, ...(cutMode === 'offcenter' ? styles.modeBtnOn : {})}}>
-                    off-center
-                  </button>
-                  <button
-                    onClick={() => setCutMode('p2p')}
-                    style={{...styles.modeBtn, ...(cutMode === 'p2p' ? styles.modeBtnOn : {})}}>
-                    p→p
-                  </button>
-                </div>
-                {cutMode === 'parallel' && (
-                  <Slider label="N" min={1} max={5} value={sliceCount}
-                    onChange={setSliceCount} suffix={`${sliceCount}`} />
-                )}
-                {cutMode === 'offcenter' && (
-                  <Slider label="d" min={1} max={95} value={offsetD}
-                    onChange={setOffsetD} suffix={`${offsetD}%`} />
-                )}
-                {cutMode === 'p2p' && (
-                  <>
-                    <Slider label="P₁" min={0} max={359} value={phi1}
-                      onChange={setPhi1} suffix={`${phi1}°`} />
-                    <Slider label="P₂" min={0} max={359} value={phi2}
-                      onChange={setPhi2} suffix={`${phi2}°`} />
-                  </>
-                )}
-                {cutMode !== 'p2p' && (
-                  <Slider label="θ°" min={0}
-                    max={cutMode === 'center' ? Math.round(180 / cutInfo.K_cuts) : 180}
-                    value={cutMode === 'center'
-                      ? Math.min(cutPhi, Math.round(180 / cutInfo.K_cuts))
-                      : cutPhi}
-                    onChange={setCutPhi}
-                    suffix={`${cutMode === 'center'
-                      ? Math.min(cutPhi, Math.round(180 / cutInfo.K_cuts))
-                      : cutPhi}°`} />
-                )}
-                <Slider label="gap" min={0} max={100} value={separation}
-                  onChange={setSeparation} suffix={`${separation}%`} />
-                <Slider label="open" min={0} max={100} value={seamOpen}
-                  onChange={setSeamOpen} suffix={`${seamOpen}%`} />
-                {cutMode !== 'center' && (
-                  <>
-                    <div style={styles.bladeRow}>
-                      <span style={styles.bladeLabel}>blade</span>
-                      <button
-                        onClick={() => setBladeShape('straight')}
-                        style={{...styles.bladeBtn, ...(bladeShape === 'straight' ? styles.bladeBtnOn : {})}}>
-                        straight
-                      </button>
-                      <button
-                        onClick={() => setBladeShape('curved')}
-                        style={{...styles.bladeBtn, ...(bladeShape === 'curved' ? styles.bladeBtnOn : {})}}>
-                        curved
-                      </button>
-                      <button
-                        onClick={() => setBladeShape('zigzag')}
-                        style={{...styles.bladeBtn, ...(bladeShape === 'zigzag' ? styles.bladeBtnOn : {})}}>
-                        zig-zag
-                      </button>
-                      <button
-                        onClick={() => setBladeShape('custom')}
-                        style={{...styles.bladeBtn, ...(bladeShape === 'custom' ? styles.bladeBtnOn : {})}}>
-                        draw
-                      </button>
-                    </div>
-                    {bladeShape !== 'straight' && (
-                      <Slider label="amp" min={0} max={100} value={bladeAmount}
-                        onChange={setBladeAmount} suffix={`${bladeAmount}%`} />
-                    )}
-                    {bladeShape === 'custom' && (
-                      <BladeProfileEditor
-                        profile={bladeProfile}
-                        setProfile={setBladeProfile}
-                        N={PROFILE_N}
-                      />
-                    )}
-                  </>
-                )}
-                <div style={styles.toggleRow}>
-                  <Toggle label="2D view" on={show2D} onChange={setShow2D} />
-                  <Toggle label="solo piece" on={hideOthers} onChange={setHideOthers} />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+        </MobileDrawer>
       )}
 
       <footer style={styles.footer}>
