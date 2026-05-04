@@ -1963,13 +1963,6 @@ export default function GMLBody() {
     polygonBufferRef.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const note = (() => {
-    if (m === 2 && n % 2 === 1) return 'Classical Möbius strip · single-sided';
-    if (n === 0) return 'Untwisted polygonal torus';
-    const g = gcd(n, m);
-    if (g === 1) return 'Single connected ridge';
-    return `${g} disjoint ridge cycles`;
-  })();
 
   const bodyControls = (
     <>
@@ -2024,7 +2017,7 @@ export default function GMLBody() {
   const cutControls = (
     <>
       <div style={styles.toggleRow}>
-        <Toggle label={cut ? 'cutting' : 'whole'} on={cut} onChange={setCut} accent />
+        <Toggle label="cut" on={cut} onChange={setCut} accent />
       </div>
       {cut && (
         <>
