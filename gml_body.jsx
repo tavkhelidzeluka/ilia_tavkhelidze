@@ -1320,6 +1320,40 @@ function HintPopover() {
   );
 }
 
+function HintRow({ hint, children }) {
+  const ctx = useContext(HoverHintContext);
+  const ref = useRef(null);
+
+  if (!hint || !ctx) return children;
+
+  const triggerRect = () => {
+    const el = ref.current && (ref.current.firstElementChild || ref.current);
+    return el ? el.getBoundingClientRect() : null;
+  };
+
+  const onPointerEnter = (e) => {
+    if (e.pointerType !== 'mouse') return;
+    const rect = triggerRect();
+    if (rect) ctx.register(rect, hint);
+  };
+  const onPointerLeave = (e) => {
+    if (e.pointerType !== 'mouse') return;
+    ctx.cancelPending();
+    ctx.clear();
+  };
+
+  return (
+    <div
+      ref={ref}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+      style={{ display: 'contents' }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function GMLBody() {
   const mountRef = useRef(null);
   const stateRef = useRef({});
@@ -2169,7 +2203,9 @@ export default function GMLBody() {
         <Slider label="a" min={0.5} max={5} step={0.05} value={lemA} onChange={setLemA} editable />
       )}
       <Slider label="n" min={0} max={Math.max(12, m * 2, n + 2)} value={n} onChange={(v) => setN(Math.max(0, v))} editable />
-      <Slider label="m" min={2} max={Math.max(12, m + 2)} value={m} onChange={(v) => setM(Math.max(2, v))} editable />
+      <HintRow hint={HINTS.m}>
+        <Slider label="m" min={2} max={Math.max(12, m + 2)} value={m} onChange={(v) => setM(Math.max(2, v))} editable />
+      </HintRow>
       <div style={{...styles.toggleRow, flexDirection: 'column'}}>
         <Toggle label="auto-rotate" on={autoRotate} onChange={setAutoRotate} />
         <Toggle label="ridges" on={showRidges && !cut} onChange={setShowRidges} disabled={cut} />
