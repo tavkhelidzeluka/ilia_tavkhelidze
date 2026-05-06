@@ -1069,7 +1069,10 @@ function MainPalette({ pos, setPos, collapsed, setCollapsed, children }) {
         <span style={styles.paletteHeaderTitle} data-no-drag onClick={() => setCollapsed(!collapsed)}>
           {collapsed ? '▸' : '▾'} Body
         </span>
-        <span style={styles.paletteHeaderHandle}>⠿</span>
+        <span style={{display: 'flex', alignItems: 'center', gap: 4, position: 'relative'}}>
+          <TourLauncher />
+          <span style={styles.paletteHeaderHandle}>⠿</span>
+        </span>
       </div>
       {!collapsed && children}
       {!collapsed && <FirstRunHint />}
@@ -1188,10 +1191,15 @@ function MobileDrawer({ open, onToggle, children }) {
       ...styles.drawer,
       maxHeight: open ? '70vh' : 38,
     }}>
-      <button onClick={onToggle} style={styles.drawerHandle} aria-label={open ? 'collapse controls' : 'expand controls'}>
-        <div style={styles.drawerHandleBar} />
-        <span style={styles.drawerHandleLabel}>{open ? 'tap to collapse' : 'tap to expand controls'}</span>
-      </button>
+      <div style={{position: 'relative'}}>
+        <button onClick={onToggle} style={styles.drawerHandle} aria-label={open ? 'collapse controls' : 'expand controls'}>
+          <div style={styles.drawerHandleBar} />
+          <span style={styles.drawerHandleLabel}>{open ? 'tap to collapse' : 'tap to expand controls'}</span>
+        </button>
+        <div style={{position: 'absolute', right: 12, top: 12}}>
+          <TourLauncher />
+        </div>
+      </div>
       <div style={styles.drawerContent}>{children}</div>
     </div>
   );
@@ -1610,6 +1618,20 @@ function CutMini() {
       <text x={cx} y={108} textAnchor="middle" fill="rgba(246,239,225,0.55)"
         fontFamily='"JetBrains Mono", monospace' fontSize="9">2 regions after this cut</text>
     </svg>
+  );
+}
+
+function TourLauncher() {
+  const ctx = useContext(TourContext);
+  if (!ctx) return null;
+  return (
+    <button
+      style={styles.tourLauncher}
+      onClick={(e) => { e.stopPropagation(); ctx.open(); }}
+      data-no-drag
+      aria-label="replay intro tour"
+      title="replay intro tour"
+    >?</button>
   );
 }
 
