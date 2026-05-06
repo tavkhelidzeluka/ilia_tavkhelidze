@@ -1638,10 +1638,139 @@ function CutMini() {
   );
 }
 
-function SavePopoverContent({ m, n, pathShape, cut, stateRef, currentValueOf, crossSectionProps }) {
+const exporterCache = {};
+function loadExporter(name) {
+  if (exporterCache[name]) return exporterCache[name];
+  exporterCache[name] = new Promise((resolve, reject) => {
+    if (THREE[name]) { resolve(THREE[name]); return; }
+    const s = document.createElement('script');
+    s.src = `https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/${name}.js`;
+    s.onload = () => resolve(THREE[name]);
+    s.onerror = () => reject(new Error(`failed to load ${name}`));
+    document.head.appendChild(s);
+  });
+  return exporterCache[name];
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function SaveButton({ label, description, feedback, onClick }) {
   return (
-    <div style={{padding: 6, color: 'rgba(246,239,225,0.55)', fontSize: 11}}>
-      save options coming soon
+    <button onClick={onClick} style={styles.saveBtn}>
+      <span style={styles.saveBtnLabel}>{label}</span>
+      <span style={styles.saveBtnDesc}>{feedback || description}</span>
+    </button>
+  );
+}
+
+function SavePopoverContent({ m, n, pathShape, cut, stateRef, currentValueOf, crossSectionProps }) {
+  const [feedback, setFeedback] = useState({});
+
+  const filename = (ext) => `gml_m${m}_n${n}_${pathShape}${cut ? '_cut' : ''}.${ext}`;
+
+  const flash = (key, msg, ms = 2000) => {
+    setFeedback((f) => ({ ...f, [key]: msg }));
+    setTimeout(() => setFeedback((f) => { const next = { ...f }; delete next[key]; return next; }), ms);
+  };
+
+  const exportPNG = () => {
+    const sr = stateRef.current;
+    if (!sr || !sr.renderer || !sr.scene || !sr.camera) return;
+    sr.renderer.render(sr.scene, sr.camera);
+    sr.renderer.domElement.toBlob((blob) => {
+      if (blob) {
+        downloadBlob(blob, filename('png'));
+        flash('PNG', 'saved');
+      } else {
+        flash('PNG', 'failed', 2500);
+      }
+    }, 'image/png');
+  };
+
+  const exportSVG = () => {
+    const container = document.createElement('div');
+    container.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:400px;height:400px';
+    document.body.appendChild(container);
+    const root = ReactDOM.createRoot(container);
+    root.render(<CrossSection2D {...crossSectionProps} size={400} highlighted={null} />);
+    requestAnimationFrame(() => {
+      const svgEl = container.querySelector('svg');
+      if (!svgEl) {
+        root.unmount();
+        document.body.removeChild(container);
+        flash('SVG', 'failed', 2500);
+        return;
+      }
+      svgEl.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      const xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(svgEl);
+      downloadBlob(new Blob([xml], { type: 'image/svg+xml' }), filename('svg'));
+      root.unmount();
+      document.body.removeChild(container);
+      flash('SVG', 'saved');
+    });
+  };
+
+  const exportThree = async (key, exporterName, ext, mime, parseAsync) => {
+    flash(key, 'loading…', 60000);
+    try {
+      const Exporter = await loadExporter(exporterName);
+      const exporter = new Exporter();
+      const group = stateRef.current && stateRef.current.group;
+      if (!group) throw new Error('no scene group');
+      const data = parseAsync ? await parseAsync(exporter, group) : exporter.parse(group);
+      const blob = data instanceof ArrayBuffer
+        ? new Blob([data], { type: mime })
+        : new Blob([data], { type: mime });
+      downloadBlob(blob, filename(ext));
+      flash(key, 'saved');
+    } catch (err) {
+      console.error(err);
+      flash(key, 'failed', 2500);
+    }
+  };
+
+  const exportSTL = () => exportThree('STL', 'STLExporter', 'stl', 'model/stl');
+  const exportOBJ = () => exportThree('OBJ', 'OBJExporter', 'obj', 'model/obj');
+  const exportGLB = () => exportThree('GLB', 'GLTFExporter', 'glb', 'model/gltf-binary',
+    (exporter, group) => new Promise((resolve, reject) => {
+      exporter.parse(group, resolve, reject, { binary: true });
+    }));
+
+  const shareURL = async () => {
+    const params = new URLSearchParams();
+    for (const [stateName, key] of Object.entries(URL_KEYS)) {
+      const v = currentValueOf(stateName);
+      if (v === undefined || v === null) continue;
+      if (typeof v === 'boolean') params.set(key, v ? '1' : '0');
+      else params.set(key, String(v));
+    }
+    const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      flash('Share', 'copied');
+    } catch (err) {
+      console.warn('clipboard failed; URL is:', url);
+      flash('Share', 'check console', 3000);
+    }
+  };
+
+  return (
+    <div style={styles.saveGrid}>
+      <SaveButton label="PNG" description="canvas screenshot"     feedback={feedback.PNG}   onClick={exportPNG} />
+      <SaveButton label="SVG" description="cross-section diagram" feedback={feedback.SVG}   onClick={exportSVG} />
+      <SaveButton label="STL" description="printable 3D model"    feedback={feedback.STL}   onClick={exportSTL} />
+      <SaveButton label="OBJ" description="3D model with UVs"     feedback={feedback.OBJ}   onClick={exportOBJ} />
+      <SaveButton label="GLB" description="scene with materials"  feedback={feedback.GLB}   onClick={exportGLB} />
+      <SaveButton label="Share" description="copy link to clipboard" feedback={feedback.Share} onClick={shareURL} />
     </div>
   );
 }
@@ -2238,6 +2367,7 @@ function GMLBody() {
 
     stateRef.current = {
       group, surfaceMat, vertexColorMat, ridgeMat,
+      renderer, scene, camera,
       autoRotate: true, objects: [], ridges: [], orbitMats: [], zoom: 1,
       pathFrame: defaultCirclePathFrame(),
       applyHighlight() {
@@ -4034,6 +4164,32 @@ const styles = {
     whiteSpace: 'nowrap',
     pointerEvents: 'none',
     transition: 'opacity 200ms ease',
+  },
+  saveGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 8,
+    marginTop: 4,
+  },
+  saveBtn: {
+    display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+    gap: 2,
+    background: 'rgba(20,16,14,0.92)',
+    border: '1px solid rgba(199,134,89,0.28)',
+    borderRadius: 8,
+    padding: '10px 12px',
+    cursor: 'pointer',
+    fontFamily: '"JetBrains Mono", monospace',
+    transition: 'all 0.18s ease',
+    textAlign: 'left',
+  },
+  saveBtnLabel: {
+    fontSize: 11, letterSpacing: '0.15em',
+    color: '#c78659', textTransform: 'uppercase',
+  },
+  saveBtnDesc: {
+    fontSize: 9, color: 'rgba(246,239,225,0.5)',
+    letterSpacing: '0.04em',
   },
   mobileSection: {
     borderTop: '1px solid rgba(246,239,225,0.06)',
