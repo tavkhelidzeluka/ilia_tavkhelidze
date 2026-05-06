@@ -1698,12 +1698,12 @@ function TourConnector({ isMobile }) {
         fill="none" stroke="rgba(233,163,107,0.65)" strokeWidth="1"
         rx="4" ry="4" filter="url(#tour-glow)"
         opacity={drawn ? 1 : 0}
-        style={{ transition: 'opacity 400ms ease-out 350ms' }} />
+        style={{ transition: drawn ? 'opacity 400ms ease-out 350ms' : 'none' }} />
       <polyline points={ptsAttr} fill="none"
         stroke="rgba(233,163,107,0.7)" strokeWidth="1.5"
         strokeDasharray={totalLen}
         strokeDashoffset={drawn ? 0 : totalLen}
-        style={{ transition: 'stroke-dashoffset 750ms ease-out' }} />
+        style={{ transition: drawn ? 'stroke-dashoffset 750ms ease-out' : 'none' }} />
     </svg>,
     document.body
   );
