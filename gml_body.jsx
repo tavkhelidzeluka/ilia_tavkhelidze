@@ -2821,10 +2821,10 @@ export default function GMLBody() {
 
       {isMobile && (
         <MobileDrawer open={drawerOpen} onToggle={() => setDrawerOpen(!drawerOpen)}>
-          <div style={{padding: '6px 4px 10px'}}>
+          <div style={{padding: '6px 4px 10px'}} data-tour="mobileBody">
             {bodyControls}
           </div>
-          <div style={styles.mobileSection}>
+          <div style={styles.mobileSection} data-tour="mobileCutSection">
             <div style={styles.mobileSectionHeader}><span>✂ Cut</span></div>
             {cutControls}
           </div>
