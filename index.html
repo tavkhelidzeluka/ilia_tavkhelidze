@@ -1197,6 +1197,23 @@ function MobileDrawer({ open, onToggle, children }) {
   );
 }
 
+const TOUR_STEPS = [
+  { kind: 'intro', diagram: 'torus', title: 'Welcome',
+    body: "This is a Generalized Möbius–Listing body — a closed loop whose cross-section is a regular polygon that twists as it travels. You'll cut it, listen to it, and reshape it." },
+  { kind: 'intro', diagram: 'mn', title: 'm and n',
+    body: "m = sides of the cross-section polygon. n = how many m-gon-vertex steps the polygon rotates per full loop. m=2, n=1 is the classical Möbius strip." },
+  { kind: 'intro', diagram: 'cut', title: 'Cuts',
+    body: "Slice the body along a chord through the cross-section. Some chord positions split it into multiple connected pieces; others leave it whole. The piece count comes from m / gcd(2n, m)." },
+  { kind: 'ui', target: 'canvas',       title: 'The canvas',
+    body: "Drag to rotate, scroll or pinch to zoom. Click a piece to isolate; click again to clear." },
+  { kind: 'ui', target: 'mainPalette',  title: 'Body palette',
+    body: "Change the path shape (circle, ellipse, knot, figure-8), m, and n here. Toggle ridges, gradient, auto-rotate." },
+  { kind: 'ui', target: 'pillRow',      title: 'Cut & Sound',
+    body: "✂ opens cut controls — chord position, blade shape, gap. ♪ plays the polygon's waveform as audio." },
+  { kind: 'ui', target: 'mLabel',       title: 'Hints',
+    body: "Hover any label for a description. Press ? (top of palette) to replay this tour." },
+];
+
 const HINTS = {
   pathShape_circle:     { kind: 'terse', text: 'Center-path is a circle (the standard torus).' },
   pathShape_ellipse:    { kind: 'terse', text: 'Center-path is an ellipse with independent semi-axes.' },
@@ -1251,6 +1268,7 @@ const HINTS = {
 };
 
 const HoverHintContext = createContext(null);
+const TourContext = createContext(null);
 
 function HoverHintProvider({ children }) {
   const [activeHint, setActiveHint] = useState(null);
