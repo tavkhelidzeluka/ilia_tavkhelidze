@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useContext, createContext, useCallback } from 'react';
 import * as THREE from 'three';
 
 // Brightness modulation along the body (parameter t = θ / 2π in [0, 1]).
@@ -1156,6 +1156,45 @@ function MobileDrawer({ open, onToggle, children }) {
   );
 }
 
+const HoverHintContext = createContext(null);
+
+function HoverHintProvider({ children }) {
+  const [activeHint, setActiveHint] = useState(null);
+  const [hasHovered, setHasHovered] = useState(false);
+  const timerRef = useRef(null);
+
+  const clear = useCallback(() => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    setActiveHint(null);
+  }, []);
+
+  const cancelPending = useCallback(() => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+  }, []);
+
+  const register = useCallback((rect, content) => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    setActiveHint((prev) => {
+      if (prev) {
+        setHasHovered(true);
+        return { rect, content };
+      }
+      timerRef.current = setTimeout(() => {
+        setActiveHint({ rect, content });
+        setHasHovered(true);
+        timerRef.current = null;
+      }, 220);
+      return prev;
+    });
+  }, []);
+
+  return (
+    <HoverHintContext.Provider value={{ activeHint, register, clear, cancelPending, hasHovered }}>
+      {children}
+    </HoverHintContext.Provider>
+  );
+}
+
 export default function GMLBody() {
   const mountRef = useRef(null);
   const stateRef = useRef({});
@@ -2102,6 +2141,7 @@ export default function GMLBody() {
   );
 
   return (
+    <HoverHintProvider>
     <div style={styles.root}>
       <style>{cssGlobal}</style>
       <header style={styles.header}>
@@ -2245,6 +2285,7 @@ export default function GMLBody() {
         />
       )}
     </div>
+    </HoverHintProvider>
   );
 }
 

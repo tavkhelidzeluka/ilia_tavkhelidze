@@ -39,7 +39,7 @@
 <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
 
 <script type="text/babel" data-presets="react">
-const { useRef, useEffect, useState } = React;
+const { useRef, useEffect, useState, useContext, createContext, useCallback } = React;
 
 // Brightness modulation along the body (parameter t = θ / 2π in [0, 1]).
 // One full cosine cycle: bright at the seam, dim at the back of the body.
@@ -1196,6 +1196,45 @@ function MobileDrawer({ open, onToggle, children }) {
   );
 }
 
+const HoverHintContext = createContext(null);
+
+function HoverHintProvider({ children }) {
+  const [activeHint, setActiveHint] = useState(null);
+  const [hasHovered, setHasHovered] = useState(false);
+  const timerRef = useRef(null);
+
+  const clear = useCallback(() => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    setActiveHint(null);
+  }, []);
+
+  const cancelPending = useCallback(() => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+  }, []);
+
+  const register = useCallback((rect, content) => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    setActiveHint((prev) => {
+      if (prev) {
+        setHasHovered(true);
+        return { rect, content };
+      }
+      timerRef.current = setTimeout(() => {
+        setActiveHint({ rect, content });
+        setHasHovered(true);
+        timerRef.current = null;
+      }, 220);
+      return prev;
+    });
+  }, []);
+
+  return (
+    <HoverHintContext.Provider value={{ activeHint, register, clear, cancelPending, hasHovered }}>
+      {children}
+    </HoverHintContext.Provider>
+  );
+}
+
 function GMLBody() {
   const mountRef = useRef(null);
   const stateRef = useRef({});
@@ -2142,6 +2181,7 @@ function GMLBody() {
   );
 
   return (
+    <HoverHintProvider>
     <div style={styles.root}>
       <style>{cssGlobal}</style>
       <header style={styles.header}>
@@ -2285,6 +2325,7 @@ function GMLBody() {
         />
       )}
     </div>
+    </HoverHintProvider>
   );
 }
 
