@@ -1033,6 +1033,7 @@ function MainPalette({ pos, setPos, collapsed, setCollapsed, children }) {
         <span style={styles.paletteHeaderHandle}>⠿</span>
       </div>
       {!collapsed && children}
+      {!collapsed && <FirstRunHint />}
     </div>
   );
 }
@@ -1352,6 +1353,39 @@ function HintRow({ hint, children }) {
       {children}
     </div>
   );
+}
+
+function FirstRunHint({ mobile }) {
+  const ctx = useContext(HoverHintContext);
+  const [visible, setVisible] = useState(() => {
+    try { return sessionStorage.getItem('gml.hint.seen') !== '1'; }
+    catch (_) { return true; }
+  });
+  const [opacity, setOpacity] = useState(1);
+  const fadingRef = useRef(false);
+
+  const fadeOut = useCallback(() => {
+    if (fadingRef.current) return;
+    fadingRef.current = true;
+    setOpacity(0);
+    try { sessionStorage.setItem('gml.hint.seen', '1'); } catch (_) {}
+    setTimeout(() => setVisible(false), 220);
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
+    const timer = setTimeout(fadeOut, 6000);
+    return () => clearTimeout(timer);
+  }, [visible, fadeOut]);
+
+  useEffect(() => {
+    if (!visible || !ctx) return;
+    if (ctx.hasHovered) fadeOut();
+  }, [ctx && ctx.hasHovered, visible, fadeOut]);
+
+  if (!visible) return null;
+  const text = mobile ? 'tap labels for descriptions' : 'hover labels for descriptions';
+  return <div style={{...styles.firstRunHint, opacity}}>{text}</div>;
 }
 
 export default function GMLBody() {
@@ -2454,6 +2488,7 @@ export default function GMLBody() {
             <div style={styles.mobileSectionHeader}><span>♪ Sound</span></div>
             {soundControls}
           </div>
+          <FirstRunHint mobile />
         </MobileDrawer>
       )}
 
@@ -3377,6 +3412,15 @@ const styles = {
     fontSize: 9,
     color: '#9a7058',
     fontStyle: 'italic',
+  },
+  firstRunHint: {
+    marginTop: 8,
+    fontSize: 9,
+    fontStyle: 'italic',
+    color: 'rgba(246,239,225,0.35)',
+    textAlign: 'center',
+    letterSpacing: '0.05em',
+    transition: 'opacity 200ms ease',
   },
   mobileSection: {
     borderTop: '1px solid rgba(246,239,225,0.06)',
