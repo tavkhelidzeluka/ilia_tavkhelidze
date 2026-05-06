@@ -1631,8 +1631,8 @@ function TourLauncher() {
       style={styles.tourLauncher}
       onClick={(e) => { e.stopPropagation(); ctx.open(); }}
       data-no-drag
-      aria-label="replay intro tour"
-      title="replay intro tour"
+      aria-label="replay tour"
+      title="replay tour"
     >?</button>
   );
 }
@@ -3898,11 +3898,18 @@ const styles = {
     fontSize: 16, lineHeight: 1, padding: 0, cursor: 'pointer',
   },
   tourLauncher: {
-    background: 'transparent', border: 'none',
-    color: 'rgba(246,239,225,0.55)',
+    background: 'rgba(20,16,14,0.92)',
+    border: '1px solid rgba(199,134,89,0.4)',
+    borderRadius: 50,
+    width: 18, height: 18,
+    display: 'inline-flex',
+    alignItems: 'center', justifyContent: 'center',
+    color: '#c78659',
     fontFamily: '"JetBrains Mono", monospace',
-    fontSize: 12, lineHeight: 1, padding: '0 4px',
+    fontSize: 11, lineHeight: 1,
+    padding: 0,
     cursor: 'pointer',
+    transition: 'all 0.18s ease',
   },
   tourNudge: {
     position: 'absolute',
