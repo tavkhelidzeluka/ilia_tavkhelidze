@@ -1477,7 +1477,7 @@ function FirstRunHint({ mobile }) {
   return <div style={{...styles.firstRunHint, opacity}}>{text}</div>;
 }
 
-function Tour({ isMobile, drawerOpen, setDrawerOpen }) {
+function Tour({ children, isMobile, drawerOpen, setDrawerOpen }) {
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
   const [nudgeVisible, setNudgeVisible] = useState(false);
@@ -1520,6 +1520,7 @@ function Tour({ isMobile, drawerOpen, setDrawerOpen }) {
 
   return (
     <TourContext.Provider value={ctxValue}>
+      {children}
       {tourOpen && <TourCard />}
       {tourOpen && <TourConnector isMobile={isMobile} />}
     </TourContext.Provider>
@@ -2784,6 +2785,7 @@ export default function GMLBody() {
 
   return (
     <HoverHintProvider>
+    <Tour isMobile={isMobile} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen}>
     <div style={styles.root}>
       <style>{cssGlobal}</style>
       <header style={styles.header}>
@@ -2929,7 +2931,7 @@ export default function GMLBody() {
       )}
     </div>
     <HintPopover />
-    <Tour isMobile={isMobile} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} />
+    </Tour>
     </HoverHintProvider>
   );
 }
