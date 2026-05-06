@@ -1467,6 +1467,54 @@ function FirstRunHint({ mobile }) {
   return <div style={{...styles.firstRunHint, opacity}}>{text}</div>;
 }
 
+function Tour({ isMobile, drawerOpen, setDrawerOpen }) {
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+  const [nudgeVisible, setNudgeVisible] = useState(false);
+  const priorDrawerOpenRef = useRef(null);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('gml.tour.seen') !== '1') setTourOpen(true);
+    } catch (_) { setTourOpen(true); }
+  }, []);
+
+  const finish = useCallback((skipped) => {
+    try { localStorage.setItem('gml.tour.seen', '1'); } catch (_) {}
+    if (isMobile && priorDrawerOpenRef.current !== null) {
+      setDrawerOpen(priorDrawerOpenRef.current);
+      priorDrawerOpenRef.current = null;
+    }
+    setTourOpen(false);
+    setTourStep(0);
+    if (skipped) {
+      setNudgeVisible(true);
+      setTimeout(() => setNudgeVisible(false), 6000);
+    }
+  }, [isMobile, setDrawerOpen]);
+
+  const open = useCallback(() => {
+    setTourStep(0);
+    setTourOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile || !tourOpen) return;
+    if (tourStep >= 3) {
+      if (priorDrawerOpenRef.current === null) priorDrawerOpenRef.current = drawerOpen;
+      if (!drawerOpen) setDrawerOpen(true);
+    }
+  }, [isMobile, tourOpen, tourStep, drawerOpen, setDrawerOpen]);
+
+  const ctxValue = { tourOpen, tourStep, open, setTourStep, finish, nudgeVisible };
+
+  return (
+    <TourContext.Provider value={ctxValue}>
+      {tourOpen && <div data-tour-card-mounted />}
+    </TourContext.Provider>
+  );
+}
+
 export default function GMLBody() {
   const mountRef = useRef(null);
   const stateRef = useRef({});
@@ -2641,6 +2689,7 @@ export default function GMLBody() {
       )}
     </div>
     <HintPopover />
+    <Tour isMobile={isMobile} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} />
     </HoverHintProvider>
   );
 }
