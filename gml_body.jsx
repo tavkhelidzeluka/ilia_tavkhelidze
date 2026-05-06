@@ -1243,6 +1243,21 @@ function HoverHintProvider({ children }) {
     });
   }, []);
 
+  useEffect(() => {
+    if (!activeHint) return;
+    const onDocPointerDown = (e) => {
+      if (e.pointerType === 'mouse') return;
+      const r = activeHint.rect;
+      if (r) {
+        const x = e.clientX, y = e.clientY;
+        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return;
+      }
+      setActiveHint(null);
+    };
+    document.addEventListener('pointerdown', onDocPointerDown);
+    return () => document.removeEventListener('pointerdown', onDocPointerDown);
+  }, [activeHint]);
+
   return (
     <HoverHintContext.Provider value={{ activeHint, register, clear, cancelPending, hasHovered }}>
       {children}
@@ -1321,9 +1336,11 @@ function HintPopover() {
   );
 }
 
-function HintRow({ hint, children }) {
+function HintRow({ hint, children, modeButton }) {
   const ctx = useContext(HoverHintContext);
   const ref = useRef(null);
+  const holdTimerRef = useRef(null);
+  const heldRef = useRef(false);
 
   if (!hint || !ctx) return children;
 
@@ -1343,11 +1360,55 @@ function HintRow({ hint, children }) {
     ctx.clear();
   };
 
+  const onPointerDown = (e) => {
+    if (e.pointerType === 'mouse') return;
+    if (modeButton) {
+      heldRef.current = false;
+      holdTimerRef.current = setTimeout(() => {
+        heldRef.current = true;
+        const rect = triggerRect();
+        if (rect) ctx.register(rect, hint);
+        holdTimerRef.current = null;
+      }, 350);
+    } else {
+      const interactive = e.target.closest('input, button, [role="button"]');
+      if (!interactive) {
+        if (ctx.activeHint && ctx.activeHint.content === hint) ctx.clear();
+        else {
+          const rect = triggerRect();
+          if (rect) ctx.register(rect, hint);
+        }
+      }
+    }
+  };
+  const onPointerUp = (e) => {
+    if (e.pointerType === 'mouse') return;
+    if (modeButton) {
+      if (holdTimerRef.current) {
+        clearTimeout(holdTimerRef.current);
+        holdTimerRef.current = null;
+      }
+      ctx.clear();
+    }
+  };
+  const onPointerCancel = onPointerUp;
+  const onClickCapture = (e) => {
+    if (heldRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      heldRef.current = false;
+    }
+  };
+
   return (
     <div
       ref={ref}
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onClickCapture={onClickCapture}
       style={{ display: 'contents' }}
     >
       {children}
@@ -2199,16 +2260,16 @@ export default function GMLBody() {
   const bodyControls = (
     <>
       <div style={styles.modeRow}>
-        <HintRow hint={HINTS.pathShape_circle}>
+        <HintRow hint={HINTS.pathShape_circle} modeButton>
           <button onClick={() => setPathShape('circle')} style={{...styles.modeBtn, ...(pathShape === 'circle' ? styles.modeBtnOn : {})}}>circle</button>
         </HintRow>
-        <HintRow hint={HINTS.pathShape_ellipse}>
+        <HintRow hint={HINTS.pathShape_ellipse} modeButton>
           <button onClick={() => setPathShape('ellipse')} style={{...styles.modeBtn, ...(pathShape === 'ellipse' ? styles.modeBtnOn : {})}}>ellipse</button>
         </HintRow>
-        <HintRow hint={HINTS.pathShape_knot}>
+        <HintRow hint={HINTS.pathShape_knot} modeButton>
           <button onClick={() => setPathShape('torusKnot')} style={{...styles.modeBtn, ...(pathShape === 'torusKnot' ? styles.modeBtnOn : {})}}>knot</button>
         </HintRow>
-        <HintRow hint={HINTS.pathShape_lemniscate}>
+        <HintRow hint={HINTS.pathShape_lemniscate} modeButton>
           <button onClick={() => setPathShape('lemniscate')} style={{...styles.modeBtn, ...(pathShape === 'lemniscate' ? styles.modeBtnOn : {})}}>figure-8</button>
         </HintRow>
       </div>
@@ -2267,13 +2328,13 @@ export default function GMLBody() {
         <Slider label="m" min={2} max={Math.max(12, m + 2)} value={m} onChange={(v) => setM(Math.max(2, v))} editable />
       </HintRow>
       <div style={{...styles.toggleRow, flexDirection: 'column'}}>
-        <HintRow hint={HINTS.autoRotate}>
+        <HintRow hint={HINTS.autoRotate} modeButton>
           <Toggle label="auto-rotate" on={autoRotate} onChange={setAutoRotate} />
         </HintRow>
-        <HintRow hint={HINTS.ridges}>
+        <HintRow hint={HINTS.ridges} modeButton>
           <Toggle label="ridges" on={showRidges && !cut} onChange={setShowRidges} disabled={cut} />
         </HintRow>
-        <HintRow hint={HINTS.gradient}>
+        <HintRow hint={HINTS.gradient} modeButton>
           <Toggle label="gradient" on={gradient} onChange={setGradient} />
         </HintRow>
       </div>
@@ -2283,23 +2344,23 @@ export default function GMLBody() {
   const cutControls = (
     <>
       <div style={styles.toggleRow}>
-        <HintRow hint={HINTS.cut}>
+        <HintRow hint={HINTS.cut} modeButton>
           <Toggle label="cut" on={cut} onChange={setCut} accent />
         </HintRow>
       </div>
       {cut && (
         <>
           <div style={{...styles.modeRow, marginTop: 8}}>
-            <HintRow hint={HINTS.cutMode_center}>
+            <HintRow hint={HINTS.cutMode_center} modeButton>
               <button onClick={() => setCutMode('center')} style={{...styles.modeBtn, ...(cutMode === 'center' ? styles.modeBtnOn : {})}}>center</button>
             </HintRow>
-            <HintRow hint={HINTS.cutMode_parallel}>
+            <HintRow hint={HINTS.cutMode_parallel} modeButton>
               <button onClick={() => setCutMode('parallel')} style={{...styles.modeBtn, ...(cutMode === 'parallel' ? styles.modeBtnOn : {})}}>parallel</button>
             </HintRow>
-            <HintRow hint={HINTS.cutMode_offcenter}>
+            <HintRow hint={HINTS.cutMode_offcenter} modeButton>
               <button onClick={() => setCutMode('offcenter')} style={{...styles.modeBtn, ...(cutMode === 'offcenter' ? styles.modeBtnOn : {})}}>off-center</button>
             </HintRow>
-            <HintRow hint={HINTS.cutMode_p2p}>
+            <HintRow hint={HINTS.cutMode_p2p} modeButton>
               <button onClick={() => setCutMode('p2p')} style={{...styles.modeBtn, ...(cutMode === 'p2p' ? styles.modeBtnOn : {})}}>p→p</button>
             </HintRow>
           </div>
@@ -2342,16 +2403,16 @@ export default function GMLBody() {
             <>
               <div style={styles.bladeRow}>
                 <span style={styles.bladeLabel}>blade</span>
-                <HintRow hint={HINTS.bladeShape_straight}>
+                <HintRow hint={HINTS.bladeShape_straight} modeButton>
                   <button onClick={() => setBladeShape('straight')} style={{...styles.bladeBtn, ...(bladeShape === 'straight' ? styles.bladeBtnOn : {})}}>straight</button>
                 </HintRow>
-                <HintRow hint={HINTS.bladeShape_curved}>
+                <HintRow hint={HINTS.bladeShape_curved} modeButton>
                   <button onClick={() => setBladeShape('curved')} style={{...styles.bladeBtn, ...(bladeShape === 'curved' ? styles.bladeBtnOn : {})}}>curved</button>
                 </HintRow>
-                <HintRow hint={HINTS.bladeShape_zigzag}>
+                <HintRow hint={HINTS.bladeShape_zigzag} modeButton>
                   <button onClick={() => setBladeShape('zigzag')} style={{...styles.bladeBtn, ...(bladeShape === 'zigzag' ? styles.bladeBtnOn : {})}}>zig-zag</button>
                 </HintRow>
-                <HintRow hint={HINTS.bladeShape_custom}>
+                <HintRow hint={HINTS.bladeShape_custom} modeButton>
                   <button onClick={() => setBladeShape('custom')} style={{...styles.bladeBtn, ...(bladeShape === 'custom' ? styles.bladeBtnOn : {})}}>draw</button>
                 </HintRow>
               </div>
@@ -2366,10 +2427,10 @@ export default function GMLBody() {
             </>
           )}
           <div style={styles.toggleRow}>
-            <HintRow hint={HINTS.show2D}>
+            <HintRow hint={HINTS.show2D} modeButton>
               <Toggle label="2D view" on={show2D} onChange={setShow2D} />
             </HintRow>
-            <HintRow hint={HINTS.hideOthers}>
+            <HintRow hint={HINTS.hideOthers} modeButton>
               <Toggle label="solo piece" on={hideOthers} onChange={setHideOthers} />
             </HintRow>
           </div>
@@ -2393,7 +2454,7 @@ export default function GMLBody() {
       <HintRow hint={HINTS.waveAmp}>
         <Slider label="amp" min={0} max={100} value={waveAmp} onChange={setWaveAmp} suffix={`${waveAmp}%`} />
       </HintRow>
-      <HintRow hint={HINTS.wavePlay}>
+      <HintRow hint={HINTS.wavePlay} modeButton>
         <button
           onClick={togglePlay}
           style={{
