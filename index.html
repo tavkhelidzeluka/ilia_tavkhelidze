@@ -2288,48 +2288,82 @@ function GMLBody() {
   const cutControls = (
     <>
       <div style={styles.toggleRow}>
-        <Toggle label="cut" on={cut} onChange={setCut} accent />
+        <HintRow hint={HINTS.cut}>
+          <Toggle label="cut" on={cut} onChange={setCut} accent />
+        </HintRow>
       </div>
       {cut && (
         <>
           <div style={{...styles.modeRow, marginTop: 8}}>
-            <button onClick={() => setCutMode('center')} style={{...styles.modeBtn, ...(cutMode === 'center' ? styles.modeBtnOn : {})}}>center</button>
-            <button onClick={() => setCutMode('parallel')} style={{...styles.modeBtn, ...(cutMode === 'parallel' ? styles.modeBtnOn : {})}}>parallel</button>
-            <button onClick={() => setCutMode('offcenter')} style={{...styles.modeBtn, ...(cutMode === 'offcenter' ? styles.modeBtnOn : {})}}>off-center</button>
-            <button onClick={() => setCutMode('p2p')} style={{...styles.modeBtn, ...(cutMode === 'p2p' ? styles.modeBtnOn : {})}}>p→p</button>
+            <HintRow hint={HINTS.cutMode_center}>
+              <button onClick={() => setCutMode('center')} style={{...styles.modeBtn, ...(cutMode === 'center' ? styles.modeBtnOn : {})}}>center</button>
+            </HintRow>
+            <HintRow hint={HINTS.cutMode_parallel}>
+              <button onClick={() => setCutMode('parallel')} style={{...styles.modeBtn, ...(cutMode === 'parallel' ? styles.modeBtnOn : {})}}>parallel</button>
+            </HintRow>
+            <HintRow hint={HINTS.cutMode_offcenter}>
+              <button onClick={() => setCutMode('offcenter')} style={{...styles.modeBtn, ...(cutMode === 'offcenter' ? styles.modeBtnOn : {})}}>off-center</button>
+            </HintRow>
+            <HintRow hint={HINTS.cutMode_p2p}>
+              <button onClick={() => setCutMode('p2p')} style={{...styles.modeBtn, ...(cutMode === 'p2p' ? styles.modeBtnOn : {})}}>p→p</button>
+            </HintRow>
           </div>
           {cutMode === 'parallel' && (
-            <Slider label="N" min={1} max={5} value={sliceCount} onChange={setSliceCount} suffix={`${sliceCount}`} />
+            <HintRow hint={HINTS.sliceCount}>
+              <Slider label="N" min={1} max={5} value={sliceCount} onChange={setSliceCount} suffix={`${sliceCount}`} />
+            </HintRow>
           )}
           {cutMode === 'offcenter' && (
-            <Slider label="d" min={1} max={95} value={offsetD} onChange={setOffsetD} suffix={`${offsetD}%`} />
+            <HintRow hint={HINTS.offsetD}>
+              <Slider label="d" min={1} max={95} value={offsetD} onChange={setOffsetD} suffix={`${offsetD}%`} />
+            </HintRow>
           )}
           {cutMode === 'p2p' && (
             <>
-              <Slider label="P₁" min={0} max={359} value={phi1} onChange={setPhi1} suffix={`${phi1}°`} />
-              <Slider label="P₂" min={0} max={359} value={phi2} onChange={setPhi2} suffix={`${phi2}°`} />
+              <HintRow hint={HINTS.phi1}>
+                <Slider label="P₁" min={0} max={359} value={phi1} onChange={setPhi1} suffix={`${phi1}°`} />
+              </HintRow>
+              <HintRow hint={HINTS.phi2}>
+                <Slider label="P₂" min={0} max={359} value={phi2} onChange={setPhi2} suffix={`${phi2}°`} />
+              </HintRow>
             </>
           )}
           {cutMode !== 'p2p' && (
-            <Slider label="θ°" min={0}
-              max={cutMode === 'center' ? Math.round(180 / cutInfo.K_cuts) : 180}
-              value={cutMode === 'center' ? Math.min(cutPhi, Math.round(180 / cutInfo.K_cuts)) : cutPhi}
-              onChange={setCutPhi}
-              suffix={`${cutMode === 'center' ? Math.min(cutPhi, Math.round(180 / cutInfo.K_cuts)) : cutPhi}°`} />
+            <HintRow hint={HINTS.cutPhi}>
+              <Slider label="θ°" min={0}
+                max={cutMode === 'center' ? Math.round(180 / cutInfo.K_cuts) : 180}
+                value={cutMode === 'center' ? Math.min(cutPhi, Math.round(180 / cutInfo.K_cuts)) : cutPhi}
+                onChange={setCutPhi}
+                suffix={`${cutMode === 'center' ? Math.min(cutPhi, Math.round(180 / cutInfo.K_cuts)) : cutPhi}°`} />
+            </HintRow>
           )}
-          <Slider label="gap" min={0} max={100} value={separation} onChange={setSeparation} suffix={`${separation}%`} />
-          <Slider label="open" min={0} max={100} value={seamOpen} onChange={setSeamOpen} suffix={`${seamOpen}%`} />
+          <HintRow hint={HINTS.gap}>
+            <Slider label="gap" min={0} max={100} value={separation} onChange={setSeparation} suffix={`${separation}%`} />
+          </HintRow>
+          <HintRow hint={HINTS.seamOpen}>
+            <Slider label="open" min={0} max={100} value={seamOpen} onChange={setSeamOpen} suffix={`${seamOpen}%`} />
+          </HintRow>
           {cutMode !== 'center' && (
             <>
               <div style={styles.bladeRow}>
                 <span style={styles.bladeLabel}>blade</span>
-                <button onClick={() => setBladeShape('straight')} style={{...styles.bladeBtn, ...(bladeShape === 'straight' ? styles.bladeBtnOn : {})}}>straight</button>
-                <button onClick={() => setBladeShape('curved')} style={{...styles.bladeBtn, ...(bladeShape === 'curved' ? styles.bladeBtnOn : {})}}>curved</button>
-                <button onClick={() => setBladeShape('zigzag')} style={{...styles.bladeBtn, ...(bladeShape === 'zigzag' ? styles.bladeBtnOn : {})}}>zig-zag</button>
-                <button onClick={() => setBladeShape('custom')} style={{...styles.bladeBtn, ...(bladeShape === 'custom' ? styles.bladeBtnOn : {})}}>draw</button>
+                <HintRow hint={HINTS.bladeShape_straight}>
+                  <button onClick={() => setBladeShape('straight')} style={{...styles.bladeBtn, ...(bladeShape === 'straight' ? styles.bladeBtnOn : {})}}>straight</button>
+                </HintRow>
+                <HintRow hint={HINTS.bladeShape_curved}>
+                  <button onClick={() => setBladeShape('curved')} style={{...styles.bladeBtn, ...(bladeShape === 'curved' ? styles.bladeBtnOn : {})}}>curved</button>
+                </HintRow>
+                <HintRow hint={HINTS.bladeShape_zigzag}>
+                  <button onClick={() => setBladeShape('zigzag')} style={{...styles.bladeBtn, ...(bladeShape === 'zigzag' ? styles.bladeBtnOn : {})}}>zig-zag</button>
+                </HintRow>
+                <HintRow hint={HINTS.bladeShape_custom}>
+                  <button onClick={() => setBladeShape('custom')} style={{...styles.bladeBtn, ...(bladeShape === 'custom' ? styles.bladeBtnOn : {})}}>draw</button>
+                </HintRow>
               </div>
               {bladeShape !== 'straight' && (
-                <Slider label="amp" min={0} max={100} value={bladeAmount} onChange={setBladeAmount} suffix={`${bladeAmount}%`} />
+                <HintRow hint={HINTS.bladeAmount}>
+                  <Slider label="amp" min={0} max={100} value={bladeAmount} onChange={setBladeAmount} suffix={`${bladeAmount}%`} />
+                </HintRow>
               )}
               {bladeShape === 'custom' && (
                 <BladeProfileEditor profile={bladeProfile} setProfile={setBladeProfile} N={PROFILE_N} />
@@ -2337,8 +2371,12 @@ function GMLBody() {
             </>
           )}
           <div style={styles.toggleRow}>
-            <Toggle label="2D view" on={show2D} onChange={setShow2D} />
-            <Toggle label="solo piece" on={hideOthers} onChange={setHideOthers} />
+            <HintRow hint={HINTS.show2D}>
+              <Toggle label="2D view" on={show2D} onChange={setShow2D} />
+            </HintRow>
+            <HintRow hint={HINTS.hideOthers}>
+              <Toggle label="solo piece" on={hideOthers} onChange={setHideOthers} />
+            </HintRow>
           </div>
         </>
       )}
