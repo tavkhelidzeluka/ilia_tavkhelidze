@@ -1660,6 +1660,7 @@ function TourNudge() {
 function TourConnector({ isMobile }) {
   const ctx = useContext(TourContext);
   const [geom, setGeom] = useState(null);
+  const [drawn, setDrawn] = useState(false);
 
   const step = ctx && ctx.tourOpen ? TOUR_STEPS[ctx.tourStep] : null;
   const target = step && step.kind === 'ui' ? step.target : null;
@@ -1698,9 +1699,26 @@ function TourConnector({ isMobile }) {
     return () => window.removeEventListener('resize', compute);
   }, [target, ctx && ctx.tourStep, isMobile]);
 
+  // Restart the draw-on animation each time the geometry changes (new step,
+  // resize, or tour reopen). Two rAFs so the browser commits the
+  // dashoffset=length frame before transitioning to dashoffset=0.
+  useEffect(() => {
+    if (!geom) { setDrawn(false); return; }
+    setDrawn(false);
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setDrawn(true));
+    });
+    return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); };
+  }, [geom]);
+
   if (!geom) return null;
   const { outline, points } = geom;
   const ptsAttr = points.map((p) => `${p.x},${p.y}`).join(' ');
+  let totalLen = 0;
+  for (let i = 1; i < points.length; i++) {
+    totalLen += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+  }
   return ReactDOM.createPortal(
     <svg
       style={{
@@ -1717,9 +1735,14 @@ function TourConnector({ isMobile }) {
       </defs>
       <rect x={outline.x} y={outline.y} width={outline.w} height={outline.h}
         fill="none" stroke="rgba(233,163,107,0.65)" strokeWidth="1"
-        rx="4" ry="4" filter="url(#tour-glow)" />
+        rx="4" ry="4" filter="url(#tour-glow)"
+        opacity={drawn ? 1 : 0}
+        style={{ transition: 'opacity 400ms ease-out 350ms' }} />
       <polyline points={ptsAttr} fill="none"
-        stroke="rgba(233,163,107,0.7)" strokeWidth="1.5" />
+        stroke="rgba(233,163,107,0.7)" strokeWidth="1.5"
+        strokeDasharray={totalLen}
+        strokeDashoffset={drawn ? 0 : totalLen}
+        style={{ transition: 'stroke-dashoffset 750ms ease-out' }} />
     </svg>,
     document.body
   );
