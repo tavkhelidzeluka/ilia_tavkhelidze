@@ -1207,6 +1207,20 @@ function MobileDrawer({ open, onToggle, children }) {
   );
 }
 
+const URL_KEYS = {
+  m: 'm', n: 'n', pathShape: 'ps',
+  circleR: 'R', ellipseA: 'a', ellipseB: 'b',
+  knotR: 'kR', knotr: 'kr', knotP: 'p', knotQ: 'q',
+  lemA: 'lA',
+  cut: 'cut', cutMode: 'cm',
+  sliceCount: 'N', offsetD: 'd', phi1: 'p1', phi2: 'p2', cutPhi: 'cp',
+  separation: 'gap', seamOpen: 'op',
+  bladeShape: 'bs', bladeAmount: 'ba',
+  show2D: 's2d', hideOthers: 'ho',
+  autoRotate: 'ar', showRidges: 'rg', gradient: 'gr',
+  pMode: 'pm', qMode: 'qm', waveFreq: 'hz', waveAmp: 'am',
+};
+
 const TOUR_STEPS = [
   { kind: 'intro', diagram: 'torus', title: 'Welcome',
     body: "This is a Generalized Möbius–Listing body — a closed loop whose cross-section is a regular polygon that twists as it travels. You'll cut it, listen to it, and reshape it." },
@@ -1866,6 +1880,54 @@ function GMLBody() {
       }));
     } catch {}
   }, [mainPos, mainCollapsed]);
+
+  // Hydrate state from URL params (Share URL round-trip).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    let any = false;
+    params.forEach(() => { any = true; });
+    if (!any) return;
+    const setters = {
+      m: (v) => setM(parseInt(v, 10)),
+      n: (v) => setN(parseInt(v, 10)),
+      pathShape: (v) => setPathShape(v),
+      circleR: (v) => setCircleR(parseFloat(v)),
+      ellipseA: (v) => setEllipseA(parseFloat(v)),
+      ellipseB: (v) => setEllipseB(parseFloat(v)),
+      knotR: (v) => setKnotR(parseFloat(v)),
+      knotr: (v) => setKnotr(parseFloat(v)),
+      knotP: (v) => setKnotP(parseInt(v, 10)),
+      knotQ: (v) => setKnotQ(parseInt(v, 10)),
+      lemA: (v) => setLemA(parseFloat(v)),
+      cut: (v) => setCut(v === '1'),
+      cutMode: (v) => setCutMode(v),
+      sliceCount: (v) => setSliceCount(parseInt(v, 10)),
+      offsetD: (v) => setOffsetD(parseInt(v, 10)),
+      phi1: (v) => setPhi1(parseInt(v, 10)),
+      phi2: (v) => setPhi2(parseInt(v, 10)),
+      cutPhi: (v) => setCutPhi(parseInt(v, 10)),
+      separation: (v) => setSeparation(parseInt(v, 10)),
+      seamOpen: (v) => setSeamOpen(parseInt(v, 10)),
+      bladeShape: (v) => setBladeShape(v),
+      bladeAmount: (v) => setBladeAmount(parseInt(v, 10)),
+      show2D: (v) => setShow2D(v === '1'),
+      hideOthers: (v) => setHideOthers(v === '1'),
+      autoRotate: (v) => setAutoRotate(v === '1'),
+      showRidges: (v) => setShowRidges(v === '1'),
+      gradient: (v) => setGradient(v === '1'),
+      pMode: (v) => setPMode(parseInt(v, 10)),
+      qMode: (v) => setQMode(parseInt(v, 10)),
+      waveFreq: (v) => setWaveFreq(parseInt(v, 10)),
+      waveAmp: (v) => setWaveAmp(parseInt(v, 10)),
+    };
+    for (const [stateName, key] of Object.entries(URL_KEYS)) {
+      if (!params.has(key)) continue;
+      const setter = setters[stateName];
+      if (setter) setter(params.get(key));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [show2D, setShow2D] = useState(true);
   const [highlightedPiece, setHighlightedPiece] = useState(null);
   const [hideOthers, setHideOthers] = useState(false);
@@ -1928,7 +1990,7 @@ function GMLBody() {
     camera.up.set(0, 0, 1);
     camera.lookAt(0, 0, 0);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(w, h);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
