@@ -1156,6 +1156,59 @@ function MobileDrawer({ open, onToggle, children }) {
   );
 }
 
+const HINTS = {
+  pathShape_circle:     { kind: 'terse', text: 'Center-path is a circle (the standard torus).' },
+  pathShape_ellipse:    { kind: 'terse', text: 'Center-path is an ellipse with independent semi-axes.' },
+  pathShape_knot:       { kind: 'terse', text: 'Center-path is a (p,q) torus knot — winds around the symmetry axis p times and around the tube q times.' },
+  pathShape_lemniscate: { kind: 'terse', text: 'Center-path is a figure-8 (Bernoulli lemniscate).' },
+
+  R_circle:    { kind: 'terse', text: 'Major radius — distance from the center of the torus to the center of the cross-section.' },
+  a_ellipse:   { kind: 'terse', text: 'Ellipse semi-axis along the X direction.' },
+  b_ellipse:   { kind: 'terse', text: 'Ellipse semi-axis along the Z direction.' },
+  R_knot:      { kind: 'terse', text: 'Major radius of the torus the knot winds around.' },
+  r_knot:      { kind: 'terse', text: 'Tube radius — how far the knot deviates from the underlying torus surface.' },
+  p_knot:      { kind: 'rich',  title: 'Path winding p',  body: 'Number of times the (p,q) torus knot winds around the symmetry axis. Must be coprime to q — the UI auto-bumps q if you would break that.' },
+  q_knot:      { kind: 'rich',  title: 'Tube winding q',  body: 'Number of times the (p,q) torus knot winds around the tube. Must be coprime to p — the UI auto-bumps p if you would break that.' },
+  a_lemniscate:{ kind: 'terse', text: 'Overall scale of the figure-8 path.' },
+
+  n: { kind: 'rich', title: 'Twist count',   body: 'The cross-section rotates n/m turns as it traces the path. The classical Möbius strip is m=2, n=1.', formula: 'α = (n/m)·θ' },
+  m: { kind: 'rich', title: 'Polygon sides', body: 'The cross-section is a regular m-gon. m=2 collapses to a flat strip (Möbius band when n is odd).', formula: 'pieces after a center cut = m / gcd(2n, m)' },
+
+  autoRotate: { kind: 'terse', text: 'Spin the model on its vertical axis. Off when you want to study a specific orientation.' },
+  ridges:     { kind: 'terse', text: 'Show the m-gon edges along the surface. Disabled while the body is cut.' },
+  gradient:   { kind: 'terse', text: 'Color the surface with a θ-based gradient. Off shows flat per-piece colors.' },
+
+  cut:               { kind: 'terse', text: 'Slice the body along a chord through the cross-section. Open the cut popover for shape and mode controls.' },
+  cutMode_center:    { kind: 'terse', text: 'Cut along chords through the polygon center. Diametric cuts.' },
+  cutMode_parallel:  { kind: 'terse', text: 'Cut along multiple parallel chords. Slices the body into slabs.' },
+  cutMode_offcenter: { kind: 'terse', text: 'Cut along a single chord offset from the center by a fixed distance.' },
+  cutMode_p2p:       { kind: 'terse', text: 'Point-to-point: cut along a chord from one cross-section vertex to another.' },
+
+  sliceCount: { kind: 'terse', text: 'Number of parallel chord cuts through the cross-section.' },
+  offsetD:    { kind: 'terse', text: 'Off-center cut: distance of the chord from the polygon center, as % of the inradius.' },
+  phi1:       { kind: 'terse', text: 'First vertex angle for the point-to-point cut. The chord starts at the cross-section vertex closest to this angle.' },
+  phi2:       { kind: 'terse', text: 'Second vertex angle for the point-to-point cut. The chord ends at the cross-section vertex closest to this angle.' },
+  cutPhi:     { kind: 'terse', text: 'Rotation of the cut chord within the cross-section.' },
+
+  gap:      { kind: 'terse', text: 'Pulls the cut pieces apart so you can see them as separate solids. 0 = touching.' },
+  seamOpen: { kind: 'terse', text: 'Opens up the seam at the cut surface. Lets you see the cut without separating the pieces.' },
+
+  bladeShape_straight: { kind: 'terse', text: 'Cut surface is a flat plane.' },
+  bladeShape_curved:   { kind: 'terse', text: 'Cut surface is a smooth concave/convex curve.' },
+  bladeShape_zigzag:   { kind: 'terse', text: 'Cut surface follows a sawtooth profile along the chord.' },
+  bladeShape_custom:   { kind: 'terse', text: 'Cut surface follows a profile you draw below.' },
+  bladeAmount:         { kind: 'terse', text: 'Amount of curvature/zigzag/profile applied to the cut surface.' },
+
+  show2D:     { kind: 'terse', text: 'Show the 2D cross-section diagram in a corner overlay.' },
+  hideOthers: { kind: 'terse', text: 'Hide every piece except the highlighted one. Click a piece-dot or the body itself to pick which.' },
+
+  pMode:    { kind: 'rich',  title: 'Modal number p', body: 'Spatial mode along θ that drives the per-vertex color sweep. Higher numbers, finer ripples.', formula: 'phase = p·θ + q·φ − ωt' },
+  qMode:    { kind: 'rich',  title: 'Modal number q', body: 'Spatial mode along φ that drives the per-vertex color sweep. Higher numbers, finer ripples.', formula: 'phase = p·θ + q·φ − ωt' },
+  waveFreq: { kind: 'terse', text: 'Audio frequency of the polygon waveform, in Hz.' },
+  waveAmp:  { kind: 'terse', text: 'Output volume.' },
+  wavePlay: { kind: 'terse', text: 'Start or stop the looping polygon waveform. Color-sweep visualization stays live regardless.' },
+};
+
 const HoverHintContext = createContext(null);
 
 function HoverHintProvider({ children }) {
