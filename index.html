@@ -1554,6 +1554,64 @@ function Tour({ isMobile, drawerOpen, setDrawerOpen }) {
   );
 }
 
+function TorusMini() {
+  const W = 160, H = 120;
+  const cx = W / 2, cy = H / 2;
+  const Rmaj = 50, Rmin = 14;
+  const torusPath = `M ${cx - Rmaj} ${cy} A ${Rmaj} ${Rmaj * 0.4} 0 0 1 ${cx + Rmaj} ${cy} A ${Rmaj} ${Rmaj * 0.4} 0 0 1 ${cx - Rmaj} ${cy} Z`;
+  const verts4 = getPolygonVertices(4, Rmin);
+  const mPolyPts = verts4.map(([x, y]) => `${cx + Rmaj + x},${cy + y}`).join(' ');
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H}>
+      <ellipse cx={cx} cy={cy} rx={Rmaj} ry={Rmaj * 0.4}
+        fill="none" stroke="rgba(199,134,89,0.4)" strokeWidth="0.8" strokeDasharray="2 2" />
+      <path d={torusPath} fill="none" stroke="rgba(233,163,107,0.5)" strokeWidth="1" />
+      <polygon points={mPolyPts} fill="rgba(233,163,107,0.18)" stroke="#e9a36b" strokeWidth="1" />
+    </svg>
+  );
+}
+
+function MnMini() {
+  const W = 200, H = 120;
+  const r = 28;
+  const drawPoly = (cx, cy, m) => {
+    const verts = getPolygonVertices(m, r);
+    return verts.map(([x, y]) => `${cx + x},${cy + y}`).join(' ');
+  };
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H}>
+      <polygon points={drawPoly(58, 56, 3)} fill="rgba(233,163,107,0.18)" stroke="#e9a36b" strokeWidth="1" />
+      <text x={58} y={108} textAnchor="middle" fill="rgba(246,239,225,0.55)"
+        fontFamily='"JetBrains Mono", monospace' fontSize="9">m=3, n=1</text>
+      <polygon points={drawPoly(142, 56, 6)} fill="rgba(233,163,107,0.18)" stroke="#e9a36b" strokeWidth="1" />
+      <text x={142} y={108} textAnchor="middle" fill="rgba(246,239,225,0.55)"
+        fontFamily='"JetBrains Mono", monospace' fontSize="9">m=6, n=2</text>
+    </svg>
+  );
+}
+
+function CutMini() {
+  const W = 160, H = 120;
+  const cx = W / 2, cy = 56;
+  const r = 38;
+  const localHex = getPolygonVertices(6, r);
+  const regionsMap = findAllRegions(localHex, [{ phi: Math.PI / 2, d: 0 }]);
+  const regions = Array.from(regionsMap.values());
+  const colors = ['rgba(199,134,89,0.45)', 'rgba(120,180,180,0.45)'];
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H}>
+      {regions.map((reg, i) => {
+        const pts = reg.map(([x, y]) => `${cx + x},${cy + y}`).join(' ');
+        return <polygon key={i} points={pts} fill={colors[i % 2]} stroke="#e9a36b" strokeWidth="0.8" />;
+      })}
+      <line x1={cx - r} y1={cy} x2={cx + r} y2={cy}
+        stroke="#ffd9b3" strokeWidth="1.2" strokeDasharray="3 2" />
+      <text x={cx} y={108} textAnchor="middle" fill="rgba(246,239,225,0.55)"
+        fontFamily='"JetBrains Mono", monospace' fontSize="9">2 regions after this cut</text>
+    </svg>
+  );
+}
+
 function TourCard() {
   const ctx = useContext(TourContext);
   if (!ctx || !ctx.tourOpen) return null;
@@ -1567,6 +1625,13 @@ function TourCard() {
       </div>
       {step.title && <div style={styles.tourCardTitle}>{step.title}</div>}
       <div style={styles.tourCardBody}>{step.body}</div>
+      {step.kind === 'intro' && (
+        <div style={styles.tourCardDiagram}>
+          {step.diagram === 'torus' && <TorusMini />}
+          {step.diagram === 'mn' && <MnMini />}
+          {step.diagram === 'cut' && <CutMini />}
+        </div>
+      )}
       <div style={styles.tourCardFooter}>
         <button style={styles.tourBtnSkip} onClick={() => ctx.finish(true)}>
           {ctx.tourStep === TOUR_STEPS.length - 1 ? '' : 'skip'}
