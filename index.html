@@ -1568,7 +1568,24 @@ function TourCard() {
       {step.title && <div style={styles.tourCardTitle}>{step.title}</div>}
       <div style={styles.tourCardBody}>{step.body}</div>
       <div style={styles.tourCardFooter}>
-        <span />
+        <button style={styles.tourBtnSkip} onClick={() => ctx.finish(true)}>
+          {ctx.tourStep === TOUR_STEPS.length - 1 ? '' : 'skip'}
+        </button>
+        <div style={{display: 'flex', gap: 8}}>
+          {ctx.tourStep > 0 && (
+            <button
+              style={styles.tourBtn}
+              onClick={() => ctx.setTourStep(ctx.tourStep - 1)}
+            >prev</button>
+          )}
+          <button
+            style={{...styles.tourBtn, ...styles.tourBtnPrimary}}
+            onClick={() => {
+              if (ctx.tourStep === TOUR_STEPS.length - 1) ctx.finish(false);
+              else ctx.setTourStep(ctx.tourStep + 1);
+            }}
+          >{ctx.tourStep === TOUR_STEPS.length - 1 ? 'done' : 'next'}</button>
+        </div>
       </div>
     </div>
   );
