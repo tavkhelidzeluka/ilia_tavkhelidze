@@ -1599,6 +1599,14 @@ function CutMini() {
   );
 }
 
+function SavePopoverContent({ m, n, pathShape, cut, stateRef, currentValueOf, crossSectionProps }) {
+  return (
+    <div style={{padding: 6, color: 'rgba(246,239,225,0.55)', fontSize: 11}}>
+      save options coming soon
+    </div>
+  );
+}
+
 function TourLauncher() {
   const ctx = useContext(TourContext);
   if (!ctx) return null;
@@ -1773,6 +1781,7 @@ export default function GMLBody() {
   const stateRef = useRef({});
   const soundPillRef = useRef(null);
   const cutPillRef = useRef(null);
+  const savePillRef = useRef(null);
   const [m, setM] = useState(3);
   const [n, setN] = useState(1);
   const [autoRotate, setAutoRotate] = useState(true);
@@ -1825,7 +1834,7 @@ export default function GMLBody() {
 
   const [mainPos, setMainPos] = useState(initialMainPos);
   const [mainCollapsed, setMainCollapsed] = useState(initialMainCollapsed);
-  const [openPopover, setOpenPopover] = useState(null); // null | 'cut' | 'sound'
+  const [openPopover, setOpenPopover] = useState(null); // null | 'cut' | 'sound' | 'save'
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 720);
 
   useEffect(() => {
@@ -2845,6 +2854,37 @@ export default function GMLBody() {
     </>
   );
 
+  const saveControls = (
+    <SavePopoverContent
+      m={m} n={n} pathShape={pathShape} cut={cut}
+      stateRef={stateRef}
+      currentValueOf={(name) => {
+        switch (name) {
+          case 'm': return m; case 'n': return n; case 'pathShape': return pathShape;
+          case 'circleR': return circleR; case 'ellipseA': return ellipseA; case 'ellipseB': return ellipseB;
+          case 'knotR': return knotR; case 'knotr': return knotr; case 'knotP': return knotP; case 'knotQ': return knotQ;
+          case 'lemA': return lemA;
+          case 'cut': return cut; case 'cutMode': return cutMode;
+          case 'sliceCount': return sliceCount; case 'offsetD': return offsetD;
+          case 'phi1': return phi1; case 'phi2': return phi2; case 'cutPhi': return cutPhi;
+          case 'separation': return separation; case 'seamOpen': return seamOpen;
+          case 'bladeShape': return bladeShape; case 'bladeAmount': return bladeAmount;
+          case 'show2D': return show2D; case 'hideOthers': return hideOthers;
+          case 'autoRotate': return autoRotate; case 'showRidges': return showRidges; case 'gradient': return gradient;
+          case 'pMode': return pMode; case 'qMode': return qMode;
+          case 'waveFreq': return waveFreq; case 'waveAmp': return waveAmp;
+        }
+        return undefined;
+      }}
+      crossSectionProps={{
+        m, n, cutMode,
+        sliceCount, offsetD, cutPhi,
+        phi1, phi2,
+        bladeShape, bladeAmount, bladeProfile,
+      }}
+    />
+  );
+
   return (
     <HoverHintProvider>
     <Tour isMobile={isMobile} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen}>
@@ -2896,12 +2936,19 @@ export default function GMLBody() {
               <Pill icon="♪" label="Sound" active={openPopover === 'sound'}
                     onClick={() => setOpenPopover(openPopover === 'sound' ? null : 'sound')} />
             </span>
+            <span ref={savePillRef}>
+              <Pill icon="💾" label="Save" active={openPopover === 'save'}
+                    onClick={() => setOpenPopover(openPopover === 'save' ? null : 'save')} />
+            </span>
           </div>
           <Popover open={openPopover === 'cut'} anchor={cutPillRef} onClose={() => setOpenPopover(null)} title="✂ Cut">
             {cutControls}
           </Popover>
           <Popover open={openPopover === 'sound'} anchor={soundPillRef} onClose={() => setOpenPopover(null)} title="♪ Sound">
             {soundControls}
+          </Popover>
+          <Popover open={openPopover === 'save'} anchor={savePillRef} onClose={() => setOpenPopover(null)} title="💾 Save">
+            {saveControls}
           </Popover>
         </>
       )}
@@ -2918,6 +2965,10 @@ export default function GMLBody() {
           <div style={styles.mobileSection}>
             <div style={styles.mobileSectionHeader}><span>♪ Sound</span></div>
             {soundControls}
+          </div>
+          <div style={styles.mobileSection}>
+            <div style={styles.mobileSectionHeader}><span>💾 Save</span></div>
+            {saveControls}
           </div>
           <FirstRunHint mobile />
         </MobileDrawer>
