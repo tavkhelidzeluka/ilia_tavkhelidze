@@ -2204,51 +2204,83 @@ function GMLBody() {
   const bodyControls = (
     <>
       <div style={styles.modeRow}>
-        <button onClick={() => setPathShape('circle')} style={{...styles.modeBtn, ...(pathShape === 'circle' ? styles.modeBtnOn : {})}}>circle</button>
-        <button onClick={() => setPathShape('ellipse')} style={{...styles.modeBtn, ...(pathShape === 'ellipse' ? styles.modeBtnOn : {})}}>ellipse</button>
-        <button onClick={() => setPathShape('torusKnot')} style={{...styles.modeBtn, ...(pathShape === 'torusKnot' ? styles.modeBtnOn : {})}}>knot</button>
-        <button onClick={() => setPathShape('lemniscate')} style={{...styles.modeBtn, ...(pathShape === 'lemniscate' ? styles.modeBtnOn : {})}}>figure-8</button>
+        <HintRow hint={HINTS.pathShape_circle}>
+          <button onClick={() => setPathShape('circle')} style={{...styles.modeBtn, ...(pathShape === 'circle' ? styles.modeBtnOn : {})}}>circle</button>
+        </HintRow>
+        <HintRow hint={HINTS.pathShape_ellipse}>
+          <button onClick={() => setPathShape('ellipse')} style={{...styles.modeBtn, ...(pathShape === 'ellipse' ? styles.modeBtnOn : {})}}>ellipse</button>
+        </HintRow>
+        <HintRow hint={HINTS.pathShape_knot}>
+          <button onClick={() => setPathShape('torusKnot')} style={{...styles.modeBtn, ...(pathShape === 'torusKnot' ? styles.modeBtnOn : {})}}>knot</button>
+        </HintRow>
+        <HintRow hint={HINTS.pathShape_lemniscate}>
+          <button onClick={() => setPathShape('lemniscate')} style={{...styles.modeBtn, ...(pathShape === 'lemniscate' ? styles.modeBtnOn : {})}}>figure-8</button>
+        </HintRow>
       </div>
       {pathShape === 'circle' && (
-        <Slider label="R" min={0.5} max={5} step={0.05} value={circleR} onChange={setCircleR} editable />
+        <HintRow hint={HINTS.R_circle}>
+          <Slider label="R" min={0.5} max={5} step={0.05} value={circleR} onChange={setCircleR} editable />
+        </HintRow>
       )}
       {pathShape === 'ellipse' && (
         <>
-          <Slider label="a" min={0.5} max={5} step={0.05} value={ellipseA} onChange={setEllipseA} editable />
-          <Slider label="b" min={0.5} max={5} step={0.05} value={ellipseB} onChange={setEllipseB} editable />
+          <HintRow hint={HINTS.a_ellipse}>
+            <Slider label="a" min={0.5} max={5} step={0.05} value={ellipseA} onChange={setEllipseA} editable />
+          </HintRow>
+          <HintRow hint={HINTS.b_ellipse}>
+            <Slider label="b" min={0.5} max={5} step={0.05} value={ellipseB} onChange={setEllipseB} editable />
+          </HintRow>
         </>
       )}
       {pathShape === 'torusKnot' && (
         <>
-          <Slider label="R" min={0.5} max={5} step={0.05} value={knotR} onChange={setKnotR} editable />
-          <Slider label="r" min={0.85} max={2} step={0.05} value={knotr} onChange={setKnotr} editable />
-          <Slider label="p" min={1} max={9} value={knotP} onChange={(v) => {
-            const np = Math.max(1, v | 0);
-            if (gcd(np, knotQ) === 1) { setKnotP(np); return; }
-            let nq = knotQ + 1;
-            while (gcd(np, nq) !== 1 && nq < 20) nq++;
-            setKnotP(np); setKnotQ(nq);
-          }} editable />
-          <Slider label="q" min={1} max={9} value={knotQ} onChange={(v) => {
-            const nq = Math.max(1, v | 0);
-            if (gcd(knotP, nq) === 1) { setKnotQ(nq); return; }
-            let np = knotP + 1;
-            while (gcd(np, nq) !== 1 && np < 20) np++;
-            setKnotP(np); setKnotQ(nq);
-          }} editable />
+          <HintRow hint={HINTS.R_knot}>
+            <Slider label="R" min={0.5} max={5} step={0.05} value={knotR} onChange={setKnotR} editable />
+          </HintRow>
+          <HintRow hint={HINTS.r_knot}>
+            <Slider label="r" min={0.85} max={2} step={0.05} value={knotr} onChange={setKnotr} editable />
+          </HintRow>
+          <HintRow hint={HINTS.p_knot}>
+            <Slider label="p" min={1} max={9} value={knotP} onChange={(v) => {
+              const np = Math.max(1, v | 0);
+              if (gcd(np, knotQ) === 1) { setKnotP(np); return; }
+              let nq = knotQ + 1;
+              while (gcd(np, nq) !== 1 && nq < 20) nq++;
+              setKnotP(np); setKnotQ(nq);
+            }} editable />
+          </HintRow>
+          <HintRow hint={HINTS.q_knot}>
+            <Slider label="q" min={1} max={9} value={knotQ} onChange={(v) => {
+              const nq = Math.max(1, v | 0);
+              if (gcd(knotP, nq) === 1) { setKnotQ(nq); return; }
+              let np = knotP + 1;
+              while (gcd(np, nq) !== 1 && np < 20) np++;
+              setKnotP(np); setKnotQ(nq);
+            }} editable />
+          </HintRow>
         </>
       )}
       {pathShape === 'lemniscate' && (
-        <Slider label="a" min={0.5} max={5} step={0.05} value={lemA} onChange={setLemA} editable />
+        <HintRow hint={HINTS.a_lemniscate}>
+          <Slider label="a" min={0.5} max={5} step={0.05} value={lemA} onChange={setLemA} editable />
+        </HintRow>
       )}
-      <Slider label="n" min={0} max={Math.max(12, m * 2, n + 2)} value={n} onChange={(v) => setN(Math.max(0, v))} editable />
+      <HintRow hint={HINTS.n}>
+        <Slider label="n" min={0} max={Math.max(12, m * 2, n + 2)} value={n} onChange={(v) => setN(Math.max(0, v))} editable />
+      </HintRow>
       <HintRow hint={HINTS.m}>
         <Slider label="m" min={2} max={Math.max(12, m + 2)} value={m} onChange={(v) => setM(Math.max(2, v))} editable />
       </HintRow>
       <div style={{...styles.toggleRow, flexDirection: 'column'}}>
-        <Toggle label="auto-rotate" on={autoRotate} onChange={setAutoRotate} />
-        <Toggle label="ridges" on={showRidges && !cut} onChange={setShowRidges} disabled={cut} />
-        <Toggle label="gradient" on={gradient} onChange={setGradient} />
+        <HintRow hint={HINTS.autoRotate}>
+          <Toggle label="auto-rotate" on={autoRotate} onChange={setAutoRotate} />
+        </HintRow>
+        <HintRow hint={HINTS.ridges}>
+          <Toggle label="ridges" on={showRidges && !cut} onChange={setShowRidges} disabled={cut} />
+        </HintRow>
+        <HintRow hint={HINTS.gradient}>
+          <Toggle label="gradient" on={gradient} onChange={setGradient} />
+        </HintRow>
       </div>
     </>
   );
