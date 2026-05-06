@@ -2347,27 +2347,37 @@ export default function GMLBody() {
   const soundControls = (
     <>
       <WaveformDisplay m={m} />
-      <Slider label="p" min={0} max={8} value={pMode} onChange={setPMode} suffix={`${pMode}`} />
-      <Slider label="q" min={0} max={6} value={qMode} onChange={setQMode} suffix={`${qMode}`} />
-      <Slider label="Hz" min={50} max={1500} value={waveFreq} onChange={setWaveFreq} suffix={`${waveFreq}`} />
-      <Slider label="amp" min={0} max={100} value={waveAmp} onChange={setWaveAmp} suffix={`${waveAmp}%`} />
-      <button
-        onClick={togglePlay}
-        style={{
-          marginTop: 8, padding: '8px 14px',
-          background: wavePlaying
-            ? 'linear-gradient(180deg, rgba(122,74,48,0.92), rgba(58,40,32,0.92))'
-            : 'transparent',
-          border: '1px solid rgba(199,134,89,0.4)',
-          borderRadius: 18,
-          color: wavePlaying ? '#ffd9b3' : 'rgba(246,239,225,0.65)',
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase',
-          cursor: 'pointer', width: '100%',
-        }}
-      >
-        {wavePlaying ? '■ Stop' : '▶ Play'}
-      </button>
+      <HintRow hint={HINTS.pMode}>
+        <Slider label="p" min={0} max={8} value={pMode} onChange={setPMode} suffix={`${pMode}`} />
+      </HintRow>
+      <HintRow hint={HINTS.qMode}>
+        <Slider label="q" min={0} max={6} value={qMode} onChange={setQMode} suffix={`${qMode}`} />
+      </HintRow>
+      <HintRow hint={HINTS.waveFreq}>
+        <Slider label="Hz" min={50} max={1500} value={waveFreq} onChange={setWaveFreq} suffix={`${waveFreq}`} />
+      </HintRow>
+      <HintRow hint={HINTS.waveAmp}>
+        <Slider label="amp" min={0} max={100} value={waveAmp} onChange={setWaveAmp} suffix={`${waveAmp}%`} />
+      </HintRow>
+      <HintRow hint={HINTS.wavePlay}>
+        <button
+          onClick={togglePlay}
+          style={{
+            marginTop: 8, padding: '8px 14px',
+            background: wavePlaying
+              ? 'linear-gradient(180deg, rgba(122,74,48,0.92), rgba(58,40,32,0.92))'
+              : 'transparent',
+            border: '1px solid rgba(199,134,89,0.4)',
+            borderRadius: 18,
+            color: wavePlaying ? '#ffd9b3' : 'rgba(246,239,225,0.65)',
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase',
+            cursor: 'pointer', width: '100%',
+          }}
+        >
+          {wavePlaying ? '■ Stop' : '▶ Play'}
+        </button>
+      </HintRow>
     </>
   );
 
