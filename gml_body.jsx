@@ -1033,6 +1033,7 @@ function MainPalette({ pos, setPos, collapsed, setCollapsed, children }) {
         <span style={{display: 'flex', alignItems: 'center', gap: 4, position: 'relative'}}>
           <TourLauncher />
           <span style={styles.paletteHeaderHandle}>⠿</span>
+          <TourNudge />
         </span>
       </div>
       {!collapsed && children}
@@ -1159,6 +1160,7 @@ function MobileDrawer({ open, onToggle, children }) {
         </button>
         <div style={{position: 'absolute', right: 12, top: 12}}>
           <TourLauncher />
+          <TourNudge />
         </div>
       </div>
       <div style={styles.drawerContent}>{children}</div>
@@ -1593,6 +1595,26 @@ function TourLauncher() {
       aria-label="replay intro tour"
       title="replay intro tour"
     >?</button>
+  );
+}
+
+function TourNudge() {
+  const ctx = useContext(TourContext);
+  const [opacity, setOpacity] = useState(1);
+  useEffect(() => {
+    if (!ctx || !ctx.nudgeVisible) return;
+    setOpacity(1);
+    const t = setTimeout(() => setOpacity(0), 5800);
+    return () => clearTimeout(t);
+  }, [ctx && ctx.nudgeVisible]);
+  if (!ctx || !ctx.nudgeVisible) return null;
+  return (
+    <span style={{
+      ...styles.tourNudge,
+      opacity,
+      right: 16,
+      top: 22,
+    }}>tour: press ? to replay</span>
   );
 }
 
