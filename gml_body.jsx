@@ -1510,8 +1510,28 @@ function Tour({ isMobile, drawerOpen, setDrawerOpen }) {
 
   return (
     <TourContext.Provider value={ctxValue}>
-      {tourOpen && <div data-tour-card-mounted />}
+      {tourOpen && <TourCard />}
     </TourContext.Provider>
+  );
+}
+
+function TourCard() {
+  const ctx = useContext(TourContext);
+  if (!ctx || !ctx.tourOpen) return null;
+  const step = TOUR_STEPS[ctx.tourStep];
+  if (!step) return null;
+  return (
+    <div style={styles.tourCard} data-tour-card>
+      <div style={styles.tourCardHeader}>
+        <span>step {ctx.tourStep + 1} / {TOUR_STEPS.length}</span>
+        <button style={styles.tourClose} onClick={() => ctx.finish(false)} aria-label="close tour">×</button>
+      </div>
+      {step.title && <div style={styles.tourCardTitle}>{step.title}</div>}
+      <div style={styles.tourCardBody}>{step.body}</div>
+      <div style={styles.tourCardFooter}>
+        <span />
+      </div>
+    </div>
   );
 }
 
@@ -3548,6 +3568,90 @@ const styles = {
     color: 'rgba(246,239,225,0.35)',
     textAlign: 'center',
     letterSpacing: '0.05em',
+    transition: 'opacity 200ms ease',
+  },
+  tourCard: {
+    position: 'fixed',
+    bottom: 86,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: 340,
+    background: 'linear-gradient(180deg, rgba(28,21,18,0.96), rgba(20,15,12,0.96))',
+    border: '1px solid rgba(199,134,89,0.28)',
+    borderRadius: 10,
+    padding: 16,
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 11,
+    color: '#f6efe1',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,180,120,0.08)',
+    backdropFilter: 'blur(14px)',
+    WebkitBackdropFilter: 'blur(14px)',
+    zIndex: 32,
+  },
+  tourCardHeader: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    fontSize: 9, letterSpacing: '0.18em', color: 'rgba(246,239,225,0.45)',
+    textTransform: 'uppercase', marginBottom: 10,
+  },
+  tourCardTitle: {
+    fontSize: 10, letterSpacing: '0.18em', color: '#c78659',
+    textTransform: 'uppercase', marginBottom: 6,
+  },
+  tourCardBody: {
+    color: '#e8a673', lineHeight: 1.55,
+  },
+  tourCardDiagram: {
+    marginTop: 10, display: 'flex', justifyContent: 'center',
+    height: 120,
+  },
+  tourCardFooter: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    marginTop: 14, gap: 8,
+  },
+  tourBtn: {
+    background: 'rgba(20,16,14,0.92)',
+    border: '1px solid rgba(199,134,89,0.28)',
+    borderRadius: 18,
+    padding: '6px 14px',
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 10, letterSpacing: '0.15em',
+    color: 'rgba(246,239,225,0.7)',
+    cursor: 'pointer',
+    textTransform: 'uppercase',
+  },
+  tourBtnPrimary: {
+    background: 'linear-gradient(180deg, rgba(122,74,48,0.92), rgba(58,40,32,0.92))',
+    borderColor: 'rgba(255,217,179,0.5)',
+    color: '#ffd9b3',
+  },
+  tourBtnSkip: {
+    background: 'transparent',
+    border: 'none',
+    color: 'rgba(246,239,225,0.45)',
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 10, letterSpacing: '0.12em',
+    cursor: 'pointer', padding: 0,
+    textTransform: 'lowercase',
+  },
+  tourClose: {
+    background: 'transparent', border: 'none',
+    color: 'rgba(246,239,225,0.55)',
+    fontSize: 16, lineHeight: 1, padding: 0, cursor: 'pointer',
+  },
+  tourLauncher: {
+    background: 'transparent', border: 'none',
+    color: 'rgba(246,239,225,0.55)',
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 12, lineHeight: 1, padding: '0 4px',
+    cursor: 'pointer',
+  },
+  tourNudge: {
+    position: 'absolute',
+    fontSize: 9, fontStyle: 'italic',
+    color: 'rgba(246,239,225,0.45)',
+    letterSpacing: '0.05em',
+    whiteSpace: 'nowrap',
+    pointerEvents: 'none',
     transition: 'opacity 200ms ease',
   },
   mobileSection: {
