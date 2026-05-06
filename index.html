@@ -1058,7 +1058,7 @@ function MainPalette({ pos, setPos, collapsed, setCollapsed, children }) {
   };
   const onPointerUp = () => { dragRef.current = null; };
   return (
-    <div style={{...styles.palette, left: pos.x, top: pos.y}}>
+    <div style={{...styles.palette, left: pos.x, top: pos.y}} data-tour="mainPalette">
       <div
         style={{...styles.paletteHeader, cursor: 'grab'}}
         onPointerDown={onPointerDown}
@@ -1550,6 +1550,7 @@ function Tour({ isMobile, drawerOpen, setDrawerOpen }) {
   return (
     <TourContext.Provider value={ctxValue}>
       {tourOpen && <TourCard />}
+      {tourOpen && <TourConnector isMobile={isMobile} />}
     </TourContext.Provider>
   );
 }
@@ -1609,6 +1610,74 @@ function CutMini() {
       <text x={cx} y={108} textAnchor="middle" fill="rgba(246,239,225,0.55)"
         fontFamily='"JetBrains Mono", monospace' fontSize="9">2 regions after this cut</text>
     </svg>
+  );
+}
+
+function TourConnector({ isMobile }) {
+  const ctx = useContext(TourContext);
+  const [geom, setGeom] = useState(null);
+
+  const step = ctx && ctx.tourOpen ? TOUR_STEPS[ctx.tourStep] : null;
+  const target = step && step.kind === 'ui' ? step.target : null;
+
+  useEffect(() => {
+    if (!target) { setGeom(null); return; }
+    const compute = () => {
+      let id = target;
+      if (isMobile) {
+        if (id === 'mainPalette') id = 'mobileBody';
+        else if (id === 'pillRow') id = 'mobileCutSection';
+      }
+      const el = document.querySelector(`[data-tour="${id}"]`);
+      const cardEl = document.querySelector('[data-tour-card]');
+      if (!el || !cardEl) { setGeom(null); return; }
+      const tr = el.getBoundingClientRect();
+      const cr = cardEl.getBoundingClientRect();
+      const outline = { x: tr.left - 4, y: tr.top - 4, w: tr.width + 8, h: tr.height + 8 };
+      const cardCx = cr.left + cr.width / 2, cardCy = cr.top + cr.height / 2;
+      const tgtCx = tr.left + tr.width / 2, tgtCy = tr.top + tr.height / 2;
+      const dx = tgtCx - cardCx, dy = tgtCy - cardCy;
+      const horizontalDominant = Math.abs(dx) > Math.abs(dy);
+      let from, to;
+      if (horizontalDominant) {
+        from = { x: dx > 0 ? cr.right : cr.left, y: cardCy };
+        to   = { x: dx > 0 ? tr.left  : tr.right, y: tgtCy };
+      } else {
+        from = { x: cardCx, y: dy > 0 ? cr.top : cr.bottom };
+        to   = { x: tgtCx, y: dy > 0 ? tr.bottom : tr.top };
+      }
+      const bend = horizontalDominant ? { x: to.x, y: from.y } : { x: from.x, y: to.y };
+      setGeom({ outline, points: [from, bend, to] });
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    return () => window.removeEventListener('resize', compute);
+  }, [target, ctx && ctx.tourStep, isMobile]);
+
+  if (!geom) return null;
+  const { outline, points } = geom;
+  const ptsAttr = points.map((p) => `${p.x},${p.y}`).join(' ');
+  return ReactDOM.createPortal(
+    <svg
+      style={{
+        position: 'fixed', left: 0, top: 0,
+        width: '100vw', height: '100vh',
+        pointerEvents: 'none', zIndex: 31,
+      }}
+    >
+      <defs>
+        <filter id="tour-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      <rect x={outline.x} y={outline.y} width={outline.w} height={outline.h}
+        fill="none" stroke="rgba(233,163,107,0.65)" strokeWidth="1"
+        rx="4" ry="4" filter="url(#tour-glow)" />
+      <polyline points={ptsAttr} fill="none"
+        stroke="rgba(233,163,107,0.7)" strokeWidth="1.5" />
+    </svg>,
+    document.body
   );
 }
 
@@ -2531,9 +2600,11 @@ function GMLBody() {
       <HintRow hint={HINTS.n}>
         <Slider label="n" min={0} max={Math.max(12, m * 2, n + 2)} value={n} onChange={(v) => setN(Math.max(0, v))} editable />
       </HintRow>
-      <HintRow hint={HINTS.m}>
-        <Slider label="m" min={2} max={Math.max(12, m + 2)} value={m} onChange={(v) => setM(Math.max(2, v))} editable />
-      </HintRow>
+      <div data-tour="mLabel">
+        <HintRow hint={HINTS.m}>
+          <Slider label="m" min={2} max={Math.max(12, m + 2)} value={m} onChange={(v) => setM(Math.max(2, v))} editable />
+        </HintRow>
+      </div>
       <div style={{...styles.toggleRow, flexDirection: 'column'}}>
         <HintRow hint={HINTS.autoRotate} modeButton>
           <Toggle label="auto-rotate" on={autoRotate} onChange={setAutoRotate} />
@@ -2697,7 +2768,7 @@ function GMLBody() {
         </h1>
       </header>
 
-      <div style={styles.canvasWrap}>
+      <div style={styles.canvasWrap} data-tour="canvas">
         <div ref={mountRef} style={styles.canvas} />
         {cut && show2D && (
           <button
@@ -2724,7 +2795,7 @@ function GMLBody() {
           <MainPalette pos={mainPos} setPos={setMainPos} collapsed={mainCollapsed} setCollapsed={setMainCollapsed}>
             {bodyControls}
           </MainPalette>
-          <div style={styles.pillRow}>
+          <div style={styles.pillRow} data-tour="pillRow">
             <span ref={cutPillRef}>
               <Pill icon="✂" label="Cut" active={openPopover === 'cut'}
                     onClick={() => setOpenPopover(openPopover === 'cut' ? null : 'cut')} />
