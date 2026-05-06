@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useContext, createContext, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import * as THREE from 'three';
 
 // Brightness modulation along the body (parameter t = θ / 2π in [0, 1]).
@@ -1248,6 +1249,77 @@ function HoverHintProvider({ children }) {
   );
 }
 
+function computeHintPosition(rect, contentSize, viewport) {
+  const GAP = 8;
+  const MARGIN = 6;
+  const cw = contentSize.width, ch = contentSize.height;
+  const vw = viewport.width, vh = viewport.height;
+
+  const spaceRight = vw - rect.right;
+  const spaceLeft = rect.left;
+  let side = spaceRight >= spaceLeft ? 'right' : 'left';
+
+  const tryHorizontal = (s) => {
+    const l = s === 'right' ? rect.right + GAP : rect.left - cw - GAP;
+    return { l, fits: l >= MARGIN && l + cw <= vw - MARGIN };
+  };
+  let h = tryHorizontal(side);
+  if (!h.fits) {
+    side = side === 'right' ? 'left' : 'right';
+    h = tryHorizontal(side);
+  }
+
+  let left, top;
+  if (h.fits) {
+    left = h.l;
+    top = rect.top + rect.height / 2 - ch / 2;
+    top = Math.max(MARGIN, Math.min(top, vh - ch - MARGIN));
+  } else {
+    side = 'above';
+    left = rect.left + rect.width / 2 - cw / 2;
+    left = Math.max(MARGIN, Math.min(left, vw - cw - MARGIN));
+    top = rect.top - ch - GAP;
+    if (top < MARGIN) top = rect.bottom + GAP;
+  }
+  return { left, top, side };
+}
+
+function HintPopover() {
+  const ctx = useContext(HoverHintContext);
+  const ref = useRef(null);
+  const [pos, setPos] = useState(null);
+
+  const active = ctx && ctx.activeHint;
+
+  useEffect(() => {
+    if (!active || !ref.current) { setPos(null); return; }
+    const cs = { width: ref.current.offsetWidth, height: ref.current.offsetHeight };
+    const vp = { width: window.innerWidth, height: window.innerHeight };
+    setPos(computeHintPosition(active.rect, cs, vp));
+  }, [active]);
+
+  if (!active) return null;
+  const { content } = active;
+  const style = pos
+    ? { ...styles.hintPopover, left: pos.left, top: pos.top }
+    : { ...styles.hintPopover, left: -9999, top: -9999 };
+
+  return ReactDOM.createPortal(
+    <div ref={ref} style={style}>
+      {content.kind === 'rich' ? (
+        <>
+          <div style={styles.hintPopoverTitle}>{content.title}</div>
+          <div style={styles.hintPopoverBody}>{content.body}</div>
+          {content.formula && <div style={styles.hintPopoverFormula}>{content.formula}</div>}
+        </>
+      ) : (
+        <div style={styles.hintPopoverBody}>{content.text}</div>
+      )}
+    </div>,
+    document.body
+  );
+}
+
 export default function GMLBody() {
   const mountRef = useRef(null);
   const stateRef = useRef({});
@@ -2338,6 +2410,7 @@ export default function GMLBody() {
         />
       )}
     </div>
+    <HintPopover />
     </HoverHintProvider>
   );
 }
@@ -3155,6 +3228,39 @@ const styles = {
     backdropFilter: 'blur(14px)',
     WebkitBackdropFilter: 'blur(14px)',
     zIndex: 20,
+  },
+  hintPopover: {
+    position: 'fixed',
+    background: 'linear-gradient(180deg, rgba(28,21,18,0.96), rgba(20,15,12,0.96))',
+    border: '1px solid rgba(199,134,89,0.28)',
+    borderRadius: 8,
+    padding: 12,
+    maxWidth: 240,
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 11,
+    lineHeight: 1.45,
+    color: '#e8a673',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,180,120,0.08)',
+    backdropFilter: 'blur(14px)',
+    WebkitBackdropFilter: 'blur(14px)',
+    zIndex: 30,
+    pointerEvents: 'none',
+  },
+  hintPopoverTitle: {
+    fontSize: 10,
+    letterSpacing: '0.18em',
+    textTransform: 'uppercase',
+    color: '#c78659',
+    marginBottom: 6,
+  },
+  hintPopoverBody: {
+    color: '#e8a673',
+  },
+  hintPopoverFormula: {
+    marginTop: 6,
+    fontSize: 9,
+    color: '#9a7058',
+    fontStyle: 'italic',
   },
   mobileSection: {
     borderTop: '1px solid rgba(246,239,225,0.06)',
