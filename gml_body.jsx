@@ -1987,7 +1987,7 @@ export default function GMLBody() {
     params.forEach(() => { any = true; });
     if (!any) return;
     const setters = {
-      m: (v) => setM(parseInt(v, 10)),
+      m: (v) => setM(Math.max(3, parseInt(v, 10))),
       n: (v) => setN(parseInt(v, 10)),
       pathShape: (v) => setPathShape(v),
       circleR: (v) => setCircleR(parseFloat(v)),
@@ -2832,8 +2832,16 @@ export default function GMLBody() {
       </HintRow>
       <div data-tour="mLabel">
         <HintRow hint={HINTS.m}>
-          <Slider label="m" min={2} max={Math.max(12, m + 2)} value={m} onChange={(v) => setM(Math.max(2, v))} editable />
+          <Slider label="m" min={3} max={Math.max(12, m + 2)} value={m} onChange={(v) => setM(Math.max(3, v))} editable />
         </HintRow>
+      </div>
+      <div style={{...styles.modeRow, marginTop: 6}}>
+        <button
+          onClick={() => { setM(4); setN(2); }}
+          style={{...styles.modeBtn, ...((m === 4 && n === 2) ? styles.modeBtnOn : {})}}
+        >
+          möbius strip
+        </button>
       </div>
       <div style={{...styles.toggleRow, flexDirection: 'column'}}>
         <HintRow hint={HINTS.autoRotate} modeButton>
