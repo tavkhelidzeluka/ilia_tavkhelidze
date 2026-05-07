@@ -494,6 +494,51 @@ function buildWholeGeometry(m, n, pathFrame, r, segs) {
   return g;
 }
 
+// --- Ribbon (m=2 / classical Möbius) geometry -----------------------------
+// For m=2 the GML formula p(τ, ψ, θ) = τ · Σ_i ε(ψ − iπ) gives a cross-
+// section made of two opposite radial rays — i.e. a single diameter line
+// τ ∈ [-r, r]. Sweeping that line along θ ∈ [0, thetaMax] with rotation
+// α(θ) = (n/m)·θ produces:
+//   n odd  → Möbius strip (after one revolution the diameter flips: τ → -τ).
+//   n even → trivial (closes orientably).
+// `tStart, tEnd ∈ [-1, 1]` are normalized τ fractions, so a sub-ribbon
+// covers τ ∈ [tStart·r, tEnd·r]. `lift` is a displacement *perpendicular
+// to the ribbon surface* (the vL axis, world dir −sin α · N + cos α · B);
+// it lifts adjacent cut halves above/below the original surface so the cut
+// is visible without distorting the cross-section width. `thetaMax < 2π`
+// opens the seam.
+function buildRibbonGeometry(m, n, pathFrame, r, segs, tStart, tEnd, thetaMax, lift, palette) {
+  const tau0 = tStart * r;
+  const tau1 = tEnd   * r;
+  const SURF = (palette && palette.surf) || [0.78, 0.52, 0.35];
+  const RIM  = (palette && palette.cut)  || [0.96, 0.78, 0.55];
+  const totalSegs = Math.max(120, segs);
+  const positions = [], indices = [], wc = [], colors = [];
+  for (let i = 0; i <= totalSegs; i++) {
+    const theta = (i / totalSegs) * thetaMax;
+    const [pxLo, pyLo, pzLo] = localToWorld(pathFrame, theta, tau0, lift, m, n);
+    positions.push(pxLo, pyLo, pzLo);
+    wc.push(theta, 0);
+    colors.push(SURF[0], SURF[1], SURF[2]);
+    const [pxHi, pyHi, pzHi] = localToWorld(pathFrame, theta, tau1, lift, m, n);
+    positions.push(pxHi, pyHi, pzHi);
+    wc.push(theta, 0);
+    colors.push(RIM[0], RIM[1], RIM[2]);
+  }
+  for (let i = 0; i < totalSegs; i++) {
+    const a = i * 2, b = i * 2 + 1, c = (i + 1) * 2 + 1, d = (i + 1) * 2;
+    indices.push(a, b, c, a, c, d);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  g.setIndex(indices);
+  g.computeVertexNormals();
+  g.userData = g.userData || {};
+  g.userData.waveCoords = new Float32Array(wc);
+  return g;
+}
+
 // --- One pie-slice wedge between two chord cuts ---------------------------
 // Wedge spans phiLocal in [phiStart, phiEnd], with apex at the polygon center.
 // The wedge is shifted radially in its centroid direction by `sep` for visual
@@ -1254,7 +1299,7 @@ const HINTS = {
   a_lemniscate:{ kind: 'terse', text: 'Overall scale of the figure-8 path.' },
 
   n: { kind: 'rich', title: 'Twist count',   body: 'The cross-section rotates n/m turns as it traces the path. The classical Möbius strip is m=2, n=1.', formula: 'α = (n/m)·θ' },
-  m: { kind: 'rich', title: 'Polygon sides', body: 'The cross-section is a regular m-gon. m=2 collapses to a flat strip (Möbius band when n is odd).', formula: 'pieces after a center cut = m / gcd(2n, m)' },
+  m: { kind: 'rich', title: 'Cross-section sides', body: 'The cross-section is a regular m-gon. m=2 switches to ribbon mode — the literal classical Möbius strip (one diameter line swept with rotation).', formula: 'pieces after a center cut = m / gcd(2n, m)' },
 
   autoRotate: { kind: 'terse', text: 'Spin the model on its vertical axis. Off when you want to study a specific orientation.' },
   ridges:     { kind: 'terse', text: 'Show the m-gon edges along the surface. Disabled while the body is cut.' },
@@ -2026,7 +2071,7 @@ function GMLBody() {
     params.forEach(() => { any = true; });
     if (!any) return;
     const setters = {
-      m: (v) => setM(Math.max(3, parseInt(v, 10))),
+      m: (v) => setM(Math.max(2, parseInt(v, 10))),
       n: (v) => setN(parseInt(v, 10)),
       pathShape: (v) => setPathShape(v),
       circleR: (v) => setCircleR(parseFloat(v)),
@@ -2391,6 +2436,11 @@ function GMLBody() {
         }
       },
       rebuild(mV, nV, ridgesOn, cutOn, mode, slices, dParam, cutPhiRad, sep, thetaMax, endCaps, p1Rad, p2Rad, blade, bladeAmt, profile, gradientOn, soundMode) {
+        // crossMode is implicit in m: m=2 is the literal GML formula (m
+        // radial rays = a single diameter line) and renders as ribbons; m≥3
+        // is the filled-polygon "fantasy" that this visualizer was built
+        // around. No separate toggle.
+        const crossMode = mV === 2 ? 'ribbon' : 'polygon';
         const s = stateRef.current;
         s.objects.forEach(o => { s.group.remove(o); o.geometry.dispose(); });
         s.objects = [];
@@ -2419,7 +2469,77 @@ function GMLBody() {
           return s.orbitMats[oIdx];
         };
 
-        if (cutOn && mode === 'p2p') {
+        if (crossMode === 'ribbon') {
+          // Ribbon mode (m=2): cross-section is one diameter line τ ∈ [-r, r].
+          // Each cutMode picks a list of τ-positions to cut at; sub-ribbons
+          // are the resulting τ-intervals. seamOpen → thetaMax < 2π for a
+          // visible end gap; separation → per-sub-ribbon perpendicular lift
+          // (along the surface-normal vL direction) so adjacent halves
+          // pull apart above/below the ribbon plane.
+          let cutTaus = [];
+          if (cutOn) {
+            if (mode === 'offcenter') {
+              // dParam ∈ [0.01, 0.95]; cos(cutPhi) signs the side of center.
+              // For Möbius closure (n odd) the cut traces τ=+d, gets flipped
+              // to τ=-d at θ=2π, and only closes after a second revolution
+              // — so the single cut curve corresponds to TWO τ-positions in
+              // our [0, 2π] parametrization. For n even (no flip) it closes
+              // after one revolution at the same τ. k = m/gcd(n,m) is the
+              // same closure-chord count polygon mode uses.
+              const baseTau = dParam * r * Math.cos(cutPhiRad);
+              const k = mV / (gcd(nV, mV) || 1);
+              cutTaus = (k === 2 && Math.abs(baseTau) > 1e-6) ? [baseTau, -baseTau] : [baseTau];
+            } else if (mode === 'parallel') {
+              cutTaus = evenlySpacedCutOffsets(slices, r * 0.85);
+            } else {
+              // 'center' (default) and 'p2p' fallback: single cut at τ=0.
+              cutTaus = [0];
+            }
+          }
+          // Build sub-ribbon edges in normalized [-1, 1].
+          const clamp = (t) => Math.max(-0.99, Math.min(0.99, t));
+          const edges = [-1, ...cutTaus.map(t => clamp(t / r)), 1];
+          edges.sort((a, b) => a - b);
+          const numStrips = edges.length - 1;
+          // Topological orbit assignment: when n is odd the half-twist maps
+          // τ → -τ at the seam, so sub-ribbon [a, b] and sub-ribbon [-b, -a]
+          // are the same connected piece. Pair them up so they share a color.
+          // For n even there's no flip — each sub-ribbon is its own orbit.
+          const flipsAtSeam = (nV % 2) === 1;
+          const orbitOf = new Array(numStrips);
+          let nextOrbit = 0;
+          for (let j = 0; j < numStrips; j++) {
+            if (orbitOf[j] !== undefined) continue;
+            const ts = -edges[j + 1];
+            const te = -edges[j];
+            let partner = -1;
+            if (flipsAtSeam) {
+              for (let k = j + 1; k < numStrips; k++) {
+                if (Math.abs(edges[k] - ts) < 1e-6 && Math.abs(edges[k + 1] - te) < 1e-6) {
+                  partner = k; break;
+                }
+              }
+            }
+            orbitOf[j] = nextOrbit;
+            if (partner >= 0) orbitOf[partner] = nextOrbit;
+            nextOrbit++;
+          }
+          for (let j = 0; j < numStrips; j++) {
+            const tStart = edges[j];
+            const tEnd   = edges[j + 1];
+            const lift   = numStrips > 1 ? (j - (numStrips - 1) / 2) * sep : 0;
+            const oIdx = orbitOf[j];
+            const palette = PIECE_PALETTE[oIdx % PIECE_PALETTE.length];
+            const g = buildRibbonGeometry(mV, nV, pathFrame, r, segs, tStart, tEnd, thetaMax, lift, palette);
+            if (g && gradientOn) applyGradient(g);
+            if (g) {
+              const mesh = new THREE.Mesh(g, matForOrbit(oIdx));
+              mesh.userData.orbitIdx = oIdx;
+              s.group.add(mesh);
+              s.objects.push(mesh);
+            }
+          }
+        } else if (cutOn && mode === 'p2p') {
           const polyVerts = getPolygonVertices(mV, r);
           const chords = pointToPointChords(mV, nV, p1Rad, p2Rad, r);
           if (chords.length > 0) {
@@ -2871,13 +2991,14 @@ function GMLBody() {
       </HintRow>
       <div data-tour="mLabel">
         <HintRow hint={HINTS.m}>
-          <Slider label="m" min={3} max={Math.max(12, m + 2)} value={m} onChange={(v) => setM(Math.max(3, v))} editable />
+          <Slider label="m" min={2} max={Math.max(12, m + 2)} value={m} onChange={(v) => setM(Math.max(2, v))} editable />
         </HintRow>
       </div>
       <div style={{...styles.modeRow, marginTop: 6}}>
         <button
-          onClick={() => { setM(4); setN(2); }}
-          style={{...styles.modeBtn, ...((m === 4 && n === 2) ? styles.modeBtnOn : {})}}
+          onClick={() => { setM(2); setN(1); }}
+          style={{...styles.modeBtn, ...((m === 2 && n === 1) ? styles.modeBtnOn : {})}}
+          title="Classical Möbius strip (m=2 ribbon mode)"
         >
           möbius strip
         </button>
